@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
   const signature = headersList.get('stripe-signature')
 
   if (!signature) {
+    console.error('[WEBHOOK] No signature header received')
     return NextResponse.json(
       { error: 'No signature' },
       { status: 400 }
@@ -26,8 +27,9 @@ export async function POST(request: NextRequest) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     )
+    console.log('[WEBHOOK] Event received:', event.type, event.id)
   } catch (err) {
-    console.error('Webhook signature verification failed:', err)
+    console.error('[WEBHOOK] Signature verification failed:', err)
     return NextResponse.json(
       { error: 'Invalid signature' },
       { status: 400 }
@@ -38,21 +40,41 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case 'checkout.session.completed':
         const session = event.data.object
+        console.log('[WEBHOOK] checkout.session.completed metadata:', session.metadata)
         await handleCheckoutSessionCompleted(session)
         break
 
       case 'setup_intent.succeeded':
         const setupIntent = event.data.object
+        console.log('[WEBHOOK] setup_intent.succeeded metadata:', setupIntent.metadata)
         await handleSetupIntentSucceeded(setupIntent)
         break
 
+      case 'setup_intent.setup_failed':
+        const failedSetupIntent = event.data.object
+        console.log('[WEBHOOK] setup_intent.setup_failed metadata:', failedSetupIntent.metadata)
+        await handleSetupIntentFailed(failedSetupIntent)
+        break
+
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object
+        console.log('[WEBHOOK] payment_intent.succeeded metadata:', paymentIntent.metadata)
+        await handlePaymentIntentSucceeded(paymentIntent)
+        break
+
+      case 'payment_intent.payment_failed':
+        const failedPaymentIntent = event.data.object
+        console.log('[WEBHOOK] payment_intent.payment_failed metadata:', failedPaymentIntent.metadata)
+        await handlePaymentIntentFailed(failedPaymentIntent)
+        break
+
       default:
-        console.log(`Unhandled event type: ${event.type}`)
+        console.log(`[WEBHOOK] Unhandled event type: ${event.type}`)
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('Error processing webhook:', error)
+    console.error('[WEBHOOK] Error processing webhook:', error)
     return NextResponse.json(
       { error: 'Webhook processing failed' },
       { status: 500 }
@@ -61,57 +83,154 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleCheckoutSessionCompleted(session: any) {
-  console.log('Checkout session completed:', session.id)
-  
+  console.log('[WEBHOOK] Checkout session completed:', session.id)
   if (session.mode === 'setup') {
-    const { userId, goalId, amount } = session.metadata
+    const { userId, goalId, amount, setupType } = session.metadata
+    console.log('[WEBHOOK] Session metadata:', session.metadata)
     
-    // Store the payment method with the customer
     if (session.setup_intent) {
-      const setupIntent = await stripe.setupIntents.retrieve(session.setup_intent)
-      
-      // Attach payment method to customer if not already attached
-      if (setupIntent.payment_method && session.customer) {
-        await stripe.paymentMethods.attach(setupIntent.payment_method, {
-          customer: session.customer,
+      try {
+        // Retrieve the SetupIntent with expanded payment_method
+        const setupIntent = await stripe.setupIntents.retrieve(session.setup_intent, {
+          expand: ['payment_method'],
         })
-        console.log('Payment method attached to customer:', session.customer)
         
-        // Also save the payment method ID to the goal
-        if (goalId && setupIntent.payment_method) {
-          try {
-            await convex.mutation(api.goals.savePaymentMethodId, {
-              goalId,
-              paymentMethodId: setupIntent.payment_method,
+        console.log('[WEBHOOK] Retrieved setupIntent:', setupIntent.id, setupIntent.metadata)
+        
+        if (setupIntent.payment_method && session.customer) {
+          // The payment method should already be attached to the customer
+          // but let's verify and attach if needed
+          const paymentMethod = setupIntent.payment_method as any
+          
+          if (paymentMethod.customer !== session.customer) {
+            await stripe.paymentMethods.attach(paymentMethod.id, {
+              customer: session.customer,
             })
-            console.log('Payment method ID saved to goal from checkout session:', goalId)
-          } catch (error) {
-            console.error('Error saving payment method ID to goal from checkout session:', error)
+            console.log('[WEBHOOK] Payment method attached to customer:', session.customer)
+          } else {
+            console.log('[WEBHOOK] Payment method already attached to customer')
           }
+          
+          // Save the payment method ID to the goal
+          if (goalId && paymentMethod.id) {
+            try {
+              const result = await convex.mutation(api.goals.savePaymentMethodId, {
+                goalId,
+                paymentMethodId: paymentMethod.id,
+              })
+              console.log('[WEBHOOK] Payment method ID saved to goal:', goalId, 'Result:', result)
+            } catch (error) {
+              console.error('[WEBHOOK] Error saving payment method ID to goal:', error)
+            }
+          }
+        } else {
+          console.warn('[WEBHOOK] Missing payment_method or customer in setup intent')
         }
+      } catch (error) {
+        console.error('[WEBHOOK] Error processing setup intent:', error)
       }
+    } else {
+      console.warn('[WEBHOOK] No setup_intent on session')
     }
   }
 }
 
 async function handleSetupIntentSucceeded(setupIntent: any) {
-  console.log('Setup intent succeeded:', setupIntent.id)
+  console.log('[WEBHOOK] Setup intent succeeded:', setupIntent.id)
+  const { userId, goalId, amount, setupType } = setupIntent.metadata
+  console.log('[WEBHOOK] SetupIntent metadata:', setupIntent.metadata)
   
-  const { userId, goalId, amount } = setupIntent.metadata
-  
-  // Payment method is now available for future use
   if (setupIntent.payment_method && goalId) {
-    console.log('Payment method ready for future use:', setupIntent.payment_method)
+    console.log('[WEBHOOK] Payment method ready for future use:', setupIntent.payment_method)
     
-    // Store the payment method ID on the goal
     try {
-      await convex.mutation(api.goals.savePaymentMethodId, {
+      const result = await convex.mutation(api.goals.savePaymentMethodId, {
         goalId,
         paymentMethodId: setupIntent.payment_method,
       })
-      console.log('Payment method ID saved to goal:', goalId)
+      console.log('[WEBHOOK] Payment method ID saved to goal:', goalId, 'Result:', result)
     } catch (error) {
-      console.error('Error saving payment method ID to goal:', error)
+      console.error('[WEBHOOK] Error saving payment method ID to goal:', error)
+    }
+  } else {
+    console.warn('[WEBHOOK] Missing goalId or payment_method in setup_intent.succeeded')
+  }
+}
+
+async function handleSetupIntentFailed(setupIntent: any) {
+  console.log('[WEBHOOK] Setup intent failed:', setupIntent.id)
+  const { userId, goalId, amount } = setupIntent.metadata
+  
+  if (goalId) {
+    try {
+      // Update goal status or create notification about setup failure
+      await convex.mutation(api.goals.updateGoalStatus, {
+        goalId,
+        status: 'cancelled',
+        reason: 'Payment method setup failed',
+      })
+      
+      // Create notification for user
+      await convex.mutation(api.notifications.createNotification, {
+        userId,
+        goalId,
+        type: 'payment_failed',
+        title: 'Payment Setup Failed',
+        message: 'Failed to set up payment method for your goal. Please try again.',
+      })
+    } catch (error) {
+      console.error('[WEBHOOK] Error handling setup intent failure:', error)
+    }
+  }
+}
+
+async function handlePaymentIntentSucceeded(paymentIntent: any) {
+  console.log('[WEBHOOK] Payment intent succeeded:', paymentIntent.id)
+  const { goalId, type } = paymentIntent.metadata
+  
+  if (goalId && type === 'goal_pledge_charge') {
+    try {
+      // Update goal payment status
+      await convex.mutation(api.goals.updatePaymentStatus, {
+        goalId,
+        paymentProcessed: true,
+        paymentProcessedAt: Date.now(),
+      })
+      
+      // Create payment record
+      await convex.mutation(api.payments.createPayment, {
+        goalId,
+        userId: paymentIntent.metadata.userId,
+        stripePaymentIntentId: paymentIntent.id,
+        amount: paymentIntent.amount / 100, // Convert from cents
+        currency: paymentIntent.currency,
+      })
+      
+      console.log('[WEBHOOK] Payment processed successfully for goal:', goalId)
+    } catch (error) {
+      console.error('[WEBHOOK] Error processing successful payment:', error)
+    }
+  }
+}
+
+async function handlePaymentIntentFailed(paymentIntent: any) {
+  console.log('[WEBHOOK] Payment intent failed:', paymentIntent.id)
+  const { goalId, type, userId } = paymentIntent.metadata
+  
+  if (goalId && type === 'goal_pledge_charge') {
+    try {
+      // Create notification for failed payment
+      await convex.mutation(api.notifications.createNotification, {
+        userId,
+        goalId,
+        type: 'payment_failed',
+        title: 'Payment Failed',
+        message: 'Your payment for the failed goal could not be processed. Please update your payment method.',
+      })
+      
+      console.log('[WEBHOOK] Payment failure notification created for goal:', goalId)
+    } catch (error) {
+      console.error('[WEBHOOK] Error handling payment failure:', error)
     }
   }
 } 

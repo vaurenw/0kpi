@@ -13,8 +13,10 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as actions from "../actions.js";
 import type * as categories from "../categories.js";
 import type * as cron from "../cron.js";
+import type * as crons from "../crons.js";
 import type * as goals from "../goals.js";
 import type * as http from "../http.js";
 import type * as notifications from "../notifications.js";
@@ -30,8 +32,10 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  actions: typeof actions;
   categories: typeof categories;
   cron: typeof cron;
+  crons: typeof crons;
   goals: typeof goals;
   http: typeof http;
   notifications: typeof notifications;

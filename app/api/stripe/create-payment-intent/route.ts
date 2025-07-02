@@ -51,11 +51,12 @@ export async function POST(request: NextRequest) {
       type: 'card',
     })
 
-    // Always create a Stripe Checkout session for payment method setup
+    // Create a Stripe Checkout session in setup mode
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       mode: 'setup',
+      currency: 'usd', // Required for setup mode with dynamic payment methods
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/create-goal?canceled=true`,
       metadata: {
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
         userId: userId,
         type: 'goal_pledge_setup',
         amount: amount.toString(),
+        setupType: 'future_payment',
       },
       setup_intent_data: {
         metadata: {
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
           userId: userId,
           type: 'goal_pledge_setup',
           amount: amount.toString(),
+          setupType: 'future_payment',
         },
       },
     })
@@ -78,7 +81,8 @@ export async function POST(request: NextRequest) {
       sessionId: session.id,
       url: session.url,
       amount: amount,
-      hasSavedCards: false,
+      hasSavedCards: paymentMethods.data.length > 0,
+      customerId: customerId,
     })
   } catch (error) {
     console.error('Error creating checkout session:', error)

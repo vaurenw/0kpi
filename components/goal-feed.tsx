@@ -8,6 +8,7 @@ import { Header } from "./header"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
+import { SignedIn, SignedOut } from "@clerk/nextjs"
 
 export function GoalFeed() {
   const [limit] = useState(20)
@@ -28,12 +29,22 @@ export function GoalFeed() {
             <h1 className="text-xl font-semibold text-foreground">Goal Feed</h1>
             <p className="text-sm text-muted-foreground">See what everyone is working on</p>
           </div>
-          <Link href="/create-goal">
-            <Button size="sm" className="h-8">
-              <Plus className="w-4 h-4 mr-1" />
-              Create
-            </Button>
-          </Link>
+          <SignedIn>
+            <Link href="/create-goal">
+              <Button size="sm" className="h-8">
+                <Plus className="w-4 h-4 mr-1" />
+                Create
+              </Button>
+            </Link>
+          </SignedIn>
+          <SignedOut>
+            <Link href="/sign-up">
+              <Button size="sm" className="h-8">
+                <Plus className="w-4 h-4 mr-1" />
+                Create
+              </Button>
+            </Link>
+          </SignedOut>
         </div>
 
         {isLoading ? (
@@ -78,9 +89,16 @@ export function GoalFeed() {
                   <p className="text-sm text-muted-foreground mb-2">No goals yet</p>
                   <p className="text-xs text-muted-foreground">Be the first to create a goal!</p>
                 </div>
-                <Link href="/create-goal">
-                  <Button size="sm">Create Your First Goal</Button>
-                </Link>
+                <SignedIn>
+                  <Link href="/create-goal">
+                    <Button size="sm">Create Your First Goal</Button>
+                  </Link>
+                </SignedIn>
+                <SignedOut>
+                  <Link href="/sign-up">
+                    <Button size="sm">Create Your First Goal</Button>
+                  </Link>
+                </SignedOut>
               </div>
             )}
           </div>

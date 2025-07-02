@@ -138,22 +138,30 @@ export function CreateGoalForm() {
         return
       }
 
-      // Store goal data in sessionStorage for after payment setup
-      const goalData = {
-        title: title.trim(),
-        description: description.trim(),
-        deadline: deadlineDateTime.getTime(),
-        pledgeAmount: amount,
-        userId: convexUser._id,
-        isPublic: true,
+      // Step 1: Create the pending goal in the backend
+      const pendingGoalRes = await fetch('/api/goals/create-pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          deadline: deadlineDateTime.getTime(),
+          pledgeAmount: amount,
+          userId: convexUser._id,
+          isPublic: true,
+        }),
+      })
+      if (!pendingGoalRes.ok) {
+        throw new Error('Failed to create pending goal')
       }
-      sessionStorage.setItem('pendingGoal', JSON.stringify(goalData))
+      const { goalId } = await pendingGoalRes.json()
 
-      // Step 1: Setup payment intent with Stripe and redirect to checkout
+      // Step 2: Setup payment intent with Stripe and redirect to checkout
       setPaymentSetup(true)
       const paymentResult = await setupPaymentIntent({
         amount: amount,
         userId: convexUser._id,
+        goalId,
       })
 
       // Always redirect to Stripe Checkout if a URL is present

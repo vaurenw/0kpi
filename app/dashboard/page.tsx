@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Target, CheckCircle, XCircle, Clock, User, BarChart3 } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 
@@ -38,16 +38,18 @@ function DashboardContent() {
   const { user } = useUser()
   const { convexUser } = useAuth()
   const searchParams = useSearchParams()
+  const hasProcessedSuccess = useRef(false)
   
   // Handle success redirect from Stripe Checkout
   useEffect(() => {
     const success = searchParams.get('success')
     const sessionId = searchParams.get('session_id')
     
-    if (success === 'true' && sessionId) {
+    if (success === 'true' && sessionId && !hasProcessedSuccess.current) {
+      hasProcessedSuccess.current = true
       handlePaymentSuccess(sessionId)
     }
-  }, [searchParams])
+  }, [searchParams.get('success'), searchParams.get('session_id')])
 
   const handlePaymentSuccess = async (sessionId: string) => {
     try {

@@ -1,121 +1,131 @@
-import { internalMutation } from "./_generated/server"
+import { internalMutation, internalQuery } from "./_generated/server"
+import { v } from "convex/values"
 
-// Process expired goals and trigger payments
-export const processExpiredGoals = internalMutation({
+// Get expired goals (query)
+export const getExpiredGoals = internalQuery({
   handler: async (ctx) => {
-    const now = Date.now()
-
-    try {
-      // Get all active goals that have passed their deadline
-      const expiredGoals = await ctx.db
-        .query("goals")
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .filter((q) =>
-          q.and(
-            q.lt(q.field("deadline"), now),
-            q.eq(q.field("completed"), false),
-            q.eq(q.field("paymentProcessed"), false),
-          ),
-        )
-        .collect()
-
-      console.log(`Found ${expiredGoals.length} expired goals to process`)
-
-      let processedCount = 0
-      let errorCount = 0
-
-      for (const goal of expiredGoals) {
-        try {
-          // Mark goal as failed
-          await ctx.db.patch(goal._id, {
-            status: "failed",
-          })
-
-          // Capture the payment if payment method exists
-          if (goal.paymentMethodId) {
-            try {
-              // Get user to get their Stripe customer ID
-              const user = await ctx.db.get(goal.userId)
-              if (!user || !user.stripeCustomerId) {
-                console.error(`No Stripe customer ID found for user ${goal.userId}`)
-                continue
-              }
-
-              // Create a PaymentIntent using the saved payment method
-              const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/charge-payment-method`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
-                },
-                body: JSON.stringify({
-                  paymentMethodId: goal.paymentMethodId,
-                  amount: goal.pledgeAmount, // Use the pledge amount as-is (in dollars)
-                  customerId: user.stripeCustomerId,
-                  goalId: goal._id,
-                }),
-              })
-
-              if (response.ok) {
-                const result = await response.json()
-                await ctx.db.patch(goal._id, {
-                  paymentProcessed: true,
-                  paymentProcessedAt: now,
-                  paymentIntentId: result.paymentIntentId, // Store the new payment intent ID
-                })
-                console.log(`Payment processed successfully for goal ${goal._id}: ${result.paymentIntentId}`)
-              } else {
-                const errorData = await response.json()
-                console.error(`Payment processing failed for goal ${goal._id}:`, errorData)
-              }
-            } catch (paymentError) {
-              console.error(`Payment charge failed for goal ${goal._id}:`, paymentError)
-            }
-          } else {
-            console.log(`No payment method found for goal ${goal._id}, skipping payment processing`)
-          }
-
-          // Create goal update log
-          await ctx.db.insert("goalUpdates", {
-            goalId: goal._id,
-            userId: goal.userId,
-            type: "failed",
-            message: `Goal "${goal.title}" failed - deadline missed`,
-          })
-
-          // Create notification
-          await ctx.db.insert("notifications", {
-            userId: goal.userId,
-            goalId: goal._id,
-            type: "goal_failed",
-            title: "Goal Failed",
-            message: `Unfortunately, you missed the deadline for "${goal.title}". Payment processing will begin.`,
-            read: false,
-          })
-
-          processedCount++
-          console.log(`Successfully processed expired goal: ${goal._id}`)
-        } catch (error) {
-          errorCount++
-          console.error(`Error processing expired goal ${goal._id}:`, error)
-        }
-      }
-
-      const result = {
-        processedCount,
-        errorCount,
-        totalFound: expiredGoals.length,
-        timestamp: now,
-      }
-
-      console.log(`Expired goals processing complete:`, result)
-      return result
-    } catch (error) {
-      console.error("Critical error in processExpiredGoals:", error)
-      throw error
-    }
+    const now = Date.now();
+    return await ctx.db
+      .query("goals")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) =>
+        q.and(
+          q.lt(q.field("deadline"), now),
+          q.eq(q.field("completed"), false),
+          q.eq(q.field("paymentProcessed"), false),
+        ),
+      )
+      .collect();
   },
-})
+});
+
+// Mark goal as failed
+export const markGoalAsFailed = internalMutation({
+  args: { goalId: v.id("goals") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.goalId, { status: "failed" });
+  },
+});
+
+// Update goal payment success
+export const updateGoalPaymentSuccess = internalMutation({
+  args: { 
+    goalId: v.id("goals"), 
+    paymentIntentId: v.string(),
+    processedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.goalId, {
+      paymentProcessed: true,
+      paymentProcessedAt: args.processedAt,
+      paymentIntentId: args.paymentIntentId,
+    });
+  },
+});
+
+// Create payment action required notification
+export const createPaymentActionRequiredNotification = internalMutation({
+  args: { goalId: v.id("goals"), userId: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      goalId: args.goalId,
+      type: "payment_failed",
+      title: "Payment Action Required",
+      message: `Your payment for the missed goal "${args.title}" requires action. Please update your payment method to resolve this.`,
+      read: false,
+    });
+  },
+});
+
+// Create payment failed notification
+export const createPaymentFailedNotification = internalMutation({
+  args: { goalId: v.id("goals"), userId: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      goalId: args.goalId,
+      type: "payment_failed",
+      title: "Payment Failed",
+      message: `We attempted to process your pledge for the missed goal "${args.title}", but your payment method was declined or failed. Please update your payment method to resolve this.`,
+      read: false,
+    });
+  },
+});
+
+// Create payment error notification
+export const createPaymentErrorNotification = internalMutation({
+  args: { goalId: v.id("goals"), userId: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      goalId: args.goalId,
+      type: "payment_failed",
+      title: "Payment Processing Error",
+      message: `We encountered an error processing your payment for "${args.title}". Please contact support if this issue persists.`,
+      read: false,
+    });
+  },
+});
+
+// Create no payment method notification
+export const createNoPaymentMethodNotification = internalMutation({
+  args: { goalId: v.id("goals"), userId: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      goalId: args.goalId,
+      type: "payment_failed",
+      title: "No Payment Method",
+      message: `Your goal "${args.title}" failed, but no payment method was found. Please set up a payment method for future goals.`,
+      read: false,
+    });
+  },
+});
+
+// Create goal failure notifications
+export const createGoalFailureNotifications = internalMutation({
+  args: { goalId: v.id("goals"), userId: v.id("users"), title: v.string() },
+  handler: async (ctx, args) => {
+    // Create goal update log
+    await ctx.db.insert("goalUpdates", {
+      goalId: args.goalId,
+      userId: args.userId,
+      type: "failed",
+      message: `Goal "${args.title}" failed - deadline missed`,
+    });
+
+    // Create notification about goal failure
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      goalId: args.goalId,
+      type: "goal_failed",
+      title: "Goal Failed",
+      message: `Unfortunately, you missed the deadline for "${args.title}". Payment processing will begin.`,
+      read: false,
+    });
+  },
+});
 
 // Send deadline reminders
 export const sendDeadlineReminders = internalMutation({
@@ -182,7 +192,7 @@ export const sendDeadlineReminders = internalMutation({
             })
 
             remindersSent++
-            console.log(`Sent ${urgencyLevel} reminder for goal ${goal._id} (${daysUntilDeadline} days remaining)`)
+            console.log(`Reminder sent for goal: ${goal._id} (${daysUntilDeadline} days remaining)`)
           }
         } catch (error) {
           errorCount++
@@ -193,11 +203,11 @@ export const sendDeadlineReminders = internalMutation({
       const result = {
         remindersSent,
         errorCount,
-        totalGoalsChecked: upcomingGoals.length,
+        totalFound: upcomingGoals.length,
         timestamp: now,
       }
 
-      console.log(`Deadline reminders processing complete:`, result)
+      console.log(`Deadline reminders complete:`, result)
       return result
     } catch (error) {
       console.error("Critical error in sendDeadlineReminders:", error)
@@ -345,3 +355,4 @@ export const updateUserStatistics = internalMutation({
     }
   },
 })
+

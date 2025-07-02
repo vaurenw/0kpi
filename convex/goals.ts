@@ -14,6 +14,7 @@ export const createGoal = mutation({
     category: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
     isPublic: v.optional(v.boolean()),
+    status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Validate input
@@ -44,12 +45,43 @@ export const createGoal = mutation({
     }
 
     try {
+      // First, check if a goal with this stripeSessionId already exists
+      if (args.stripeSessionId) {
+        const existingGoalBySession = await ctx.db
+          .query("goals")
+          .withIndex("by_stripe_session", (q) => q.eq("stripeSessionId", args.stripeSessionId))
+          .unique()
+
+        if (existingGoalBySession) {
+          console.log(`Goal already exists for session ${args.stripeSessionId}: ${existingGoalBySession._id}`)
+          return existingGoalBySession._id
+        }
+      }
+
+      // Deduplication: check for existing active goal with same userId, title, and deadline
+      const existingGoal = await ctx.db
+        .query("goals")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("title"), args.title.trim()),
+            q.eq(q.field("deadline"), args.deadline),
+            q.eq(q.field("status"), "active")
+          )
+        )
+        .unique()
+
+      if (existingGoal) {
+        console.log(`Duplicate goal detected for user ${args.userId}: ${existingGoal._id}`)
+        return existingGoal._id
+      }
+
       const goalId = await ctx.db.insert("goals", {
         title: args.title.trim(),
         description: args.description.trim(),
         deadline: args.deadline,
         pledgeAmount: args.pledgeAmount,
-        status: "active",
+        status: args.status ?? "active",
         completed: false,
         paymentIntentId: args.paymentIntentId,
         stripeSessionId: args.stripeSessionId,
@@ -67,12 +99,6 @@ export const createGoal = mutation({
         userId: args.userId,
         type: "created",
         message: `Goal "${args.title}" created with $${args.pledgeAmount} pledge`,
-      })
-
-      // Update user statistics
-      await ctx.db.patch(args.userId, {
-        totalGoalsCreated: (user.totalGoalsCreated || 0) + 1,
-        totalMoneyPledged: (user.totalMoneyPledged || 0) + args.pledgeAmount,
       })
 
       console.log(`Goal created: ${goalId} by user ${args.userId}`)
@@ -242,15 +268,6 @@ export const completeGoal = mutation({
         message: `Goal "${goal.title}" completed successfully`,
       })
 
-      // Update user statistics
-      const user = await ctx.db.get(args.userId)
-      if (user) {
-        await ctx.db.patch(args.userId, {
-          totalGoalsCompleted: (user.totalGoalsCompleted || 0) + 1,
-          totalMoneySaved: (user.totalMoneySaved || 0) + goal.pledgeAmount,
-        })
-      }
-
       // Create notification
       await ctx.db.insert("notifications", {
         userId: args.userId,
@@ -310,15 +327,6 @@ export const cancelGoal = mutation({
         message: `Goal "${goal.title}" cancelled${args.reason ? `: ${args.reason}` : ""}`,
       })
 
-      // Update user statistics (subtract from pledged amount)
-      const user = await ctx.db.get(args.userId)
-      if (user) {
-        await ctx.db.patch(args.userId, {
-          totalGoalsCreated: Math.max((user.totalGoalsCreated || 1) - 1, 0),
-          totalMoneyPledged: Math.max((user.totalMoneyPledged || goal.pledgeAmount) - goal.pledgeAmount, 0),
-        })
-      }
-
       console.log(`Goal cancelled: ${args.goalId} by user ${args.userId}`)
       return args.goalId
     } catch (error) {
@@ -369,14 +377,6 @@ export const updateGoalPaymentStatus = mutation({
       if (args.paymentProcessed) {
         const goal = await ctx.db.get(args.goalId)
         if (goal) {
-          // Update user statistics
-          const user = await ctx.db.get(goal.userId)
-          if (user) {
-            await ctx.db.patch(goal.userId, {
-              totalMoneyLost: (user.totalMoneyLost || 0) + goal.pledgeAmount,
-            })
-          }
-
           // Create notification
           await ctx.db.insert("notifications", {
             userId: goal.userId,
@@ -481,6 +481,7 @@ export const savePaymentMethodId = mutation({
     try {
       await ctx.db.patch(args.goalId, {
         paymentMethodId: args.paymentMethodId,
+        status: "active",
       })
       console.log(`Payment method ID saved for goal: ${args.goalId}`)
     } catch (error) {
@@ -497,13 +498,85 @@ export const getGoalBySessionId = query({
     try {
       const goal = await ctx.db
         .query("goals")
-        .filter((q) => q.eq(q.field("stripeSessionId"), args.sessionId))
+        .withIndex("by_stripe_session", (q) => q.eq("stripeSessionId", args.sessionId))
         .unique()
       
       return goal
     } catch (error) {
       console.error("Error fetching goal by session ID:", error)
       return null
+    }
+  },
+})
+
+// Update goal status
+export const updateGoalStatus = mutation({
+  args: {
+    goalId: v.id("goals"),
+    status: v.union(v.literal("pending"), v.literal("active"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const goal = await ctx.db.get(args.goalId)
+      if (!goal) {
+        throw new Error("Goal not found")
+      }
+
+      await ctx.db.patch(args.goalId, {
+        status: args.status,
+      })
+
+      // Create goal update log
+      await ctx.db.insert("goalUpdates", {
+        goalId: args.goalId,
+        userId: goal.userId,
+        type: args.status === "completed" ? "completed" : args.status === "failed" ? "failed" : "updated",
+        message: args.reason || `Goal status updated to ${args.status}`,
+      })
+
+      console.log(`Goal status updated: ${args.goalId} -> ${args.status}`)
+      return args.goalId
+    } catch (error) {
+      console.error("Error updating goal status:", error)
+      throw error
+    }
+  },
+})
+
+// Update goal payment status (alias for updateGoalPaymentStatus)
+export const updatePaymentStatus = mutation({
+  args: {
+    goalId: v.id("goals"),
+    paymentProcessed: v.boolean(),
+    paymentProcessedAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      await ctx.db.patch(args.goalId, {
+        paymentProcessed: args.paymentProcessed,
+        paymentProcessedAt: args.paymentProcessedAt || Date.now(),
+      })
+
+      if (args.paymentProcessed) {
+        const goal = await ctx.db.get(args.goalId)
+        if (goal) {
+          // Create notification
+          await ctx.db.insert("notifications", {
+            userId: goal.userId,
+            goalId: args.goalId,
+            type: "payment_processed",
+            title: "Payment Processed",
+            message: `Payment of $${goal.pledgeAmount} has been processed for the missed goal "${goal.title}"`,
+            read: false,
+          })
+
+          console.log(`Payment processed for goal: ${args.goalId}`)
+        }
+      }
+    } catch (error) {
+      console.error("Error updating goal payment status:", error)
+      throw new Error("Failed to update payment status")
     }
   },
 })

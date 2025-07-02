@@ -1,17 +1,5 @@
 {
   "node": {
     "18": true
-  },
-  "crons": [
-    {
-      "name": "processExpiredGoals",
-      "function": "cron:processExpiredGoals",
-      "schedule": "0 * * * *"
-    },
-    {
-      "name": "sendDeadlineReminders",
-      "function": "cron:sendDeadlineReminders", 
-      "schedule": "0 9 * * *"
-    }
-  ]
+  }
 }

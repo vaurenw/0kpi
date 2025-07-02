@@ -31,7 +31,7 @@ export default defineSchema({
     pledgeAmount: v.number(),
 
     // Status
-    status: v.union(v.literal("active"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
+    status: v.union(v.literal("pending"), v.literal("active"), v.literal("completed"), v.literal("failed"), v.literal("cancelled")),
     completed: v.boolean(),
     completedAt: v.optional(v.number()),
 
@@ -59,7 +59,8 @@ export default defineSchema({
     .index("by_deadline", ["deadline"])
     .index("by_user_status", ["userId", "status"])
     .index("by_public", ["isPublic"])
-    .index("by_category", ["category"]),
+    .index("by_category", ["category"])
+    .index("by_stripe_session", ["stripeSessionId"]),
 
   goalUpdates: defineTable({
     goalId: v.id("goals"),

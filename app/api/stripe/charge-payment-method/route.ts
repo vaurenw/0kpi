@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
+import { api } from '@/convex/_generated/api'
+import { ConvexHttpClient } from 'convex/browser'
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,31 +37,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Create and confirm a PaymentIntent using the saved payment method
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert dollars to cents
-      currency: 'usd',
-      customer: customerId,
-      payment_method: paymentMethodId,
-      off_session: true,
-      confirm: true,
-      metadata: {
-        goalId: goalId || '',
-        type: 'goal_pledge_charge',
-      },
-    })
+    // Get goal details for better error handling
+    const goal = goalId ? await convex.query(api.goals.getGoalById, { goalId }) : null
 
-    return NextResponse.json({
-      success: true,
-      paymentIntentId: paymentIntent.id,
-      status: paymentIntent.status,
-      amount: paymentIntent.amount,
-    })
+    // Create and confirm a PaymentIntent using the saved payment method
+    let paymentIntent
+    try {
+      paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert dollars to cents
+        currency: 'usd',
+        customer: customerId,
+        payment_method: paymentMethodId,
+        off_session: true,
+        confirm: true,
+        metadata: {
+          goalId: goalId || '',
+          type: 'goal_pledge_charge',
+          userId: goal?.userId || '',
+        },
+      }, {
+        idempotencyKey: goalId ? `goal-charge-${goalId}` : undefined,
+      })
+    } catch (error) {
+      return NextResponse.json({ error: 'Failed to create PaymentIntent' }, { status: 500 })
+    }
+
+    return NextResponse.json({ paymentIntent: paymentIntent.client_secret }, { status: 200 })
   } catch (error) {
-    console.error('Error charging payment method:', error)
-    return NextResponse.json(
-      { error: 'Failed to charge payment method' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
   }
-} 
+}

@@ -105,26 +105,15 @@ export const updatePaymentStatus = mutation({
           paymentProcessedAt: now,
         })
 
-        // Update user statistics
-        const goal = await ctx.db.get(payment.goalId)
-        if (goal) {
-          const user = await ctx.db.get(payment.userId)
-          if (user) {
-            await ctx.db.patch(payment.userId, {
-              totalMoneyLost: (user.totalMoneyLost || 0) + payment.amount,
-            })
-          }
-
-          // Create notification
-          await ctx.db.insert("notifications", {
-            userId: payment.userId,
-            goalId: payment.goalId,
-            type: "payment_processed",
-            title: "Payment Processed",
-            message: `Payment of $${payment.amount} has been processed for "${goal.title}"`,
-            read: false,
-          })
-        }
+        // Create notification
+        await ctx.db.insert("notifications", {
+          userId: payment.userId,
+          goalId: payment.goalId,
+          type: "payment_processed",
+          title: "Payment Processed",
+          message: `Payment of $${payment.amount} has been processed for "${payment.goal.title}"`,
+          read: false,
+        })
       } else if (args.status === "failed") {
         // Create notification for failed payment
         const goal = await ctx.db.get(payment.goalId)

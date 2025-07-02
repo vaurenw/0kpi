@@ -1,15 +1,17 @@
 import { GoalDetail } from "@/components/goal-detail"
 
 interface GoalPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
-export default function GoalPage({ params }: GoalPageProps) {
+export default async function GoalPage({ params }: GoalPageProps) {
+  const { id } = await params
+  
   return (
     <div className="min-h-screen bg-gray-50">
-      <GoalDetail goalId={params.id} />
+      <GoalDetail goalId={id} />
     </div>
   )
 }
