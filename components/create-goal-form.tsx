@@ -54,7 +54,6 @@ const setupPaymentIntent = async (data: PaymentSetupRequest) => {
 
 export function CreateGoalForm() {
   const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
   const [deadlineDate, setDeadlineDate] = useState("")
   const [deadlineTime, setDeadlineTime] = useState("")
   const [pledgeAmount, setPledgeAmount] = useState("")
@@ -89,7 +88,6 @@ export function CreateGoalForm() {
   const isFormValid = () => {
     return (
       title.trim().length > 0 &&
-      description.trim().length > 0 &&
       deadlineDate.length > 0 &&
       deadlineTime.length > 0 &&
       pledgeAmount.length > 0 &&
@@ -144,7 +142,6 @@ export function CreateGoalForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: title.trim(),
-          description: description.trim(),
           deadline: deadlineDateTime.getTime(),
           pledgeAmount: amount,
           userId: convexUser._id,
@@ -192,21 +189,6 @@ export function CreateGoalForm() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g., Complete my morning workout routine"
             className="mt-1"
-            required
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="description" className="text-sm font-medium">
-            Description
-          </Label>
-          <Textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe your goal in detail..."
-            rows={4}
-            className="mt-1 resize-none"
             required
           />
         </div>

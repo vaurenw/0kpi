@@ -48,7 +48,8 @@ export const processExpiredGoalsAction = internalAction({
                 }),
               });
 
-              if (response.ok) {
+              const contentType = response.headers.get('content-type') || '';
+              if (response.ok && contentType.includes('application/json')) {
                 const result = await response.json();
                 if (result.paymentIntentId) {
                   await ctx.runMutation(internal.cron.updateGoalPaymentSuccess, {
@@ -63,9 +64,15 @@ export const processExpiredGoalsAction = internalAction({
                   errorCount++;
                 }
               } else {
-                const errorData = await response.json();
+                let errorData;
+                if (contentType.includes('application/json')) {
+                  errorData = await response.json();
+                } else {
+                  errorData = await response.text();
+                  console.error(`Non-JSON error response for goal ${goal._id}:`, errorData);
+                  errorData = { error: errorData };
+                }
                 console.error(`Payment processing failed for goal ${goal._id}:`, errorData);
-                
                 // Handle different types of payment failures
                 if (errorData.requiresAction) {
                   await ctx.runMutation(internal.cron.createPaymentActionRequiredNotification, {

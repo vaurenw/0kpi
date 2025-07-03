@@ -26,7 +26,7 @@ export default defineSchema({
   goals: defineTable({
     // Goal details
     title: v.string(),
-    description: v.string(),
+    description: v.optional(v.string()),
     deadline: v.number(), // Unix timestamp
     pledgeAmount: v.number(),
 
@@ -125,4 +125,13 @@ export default defineSchema({
     icon: v.optional(v.string()),
     isDefault: v.optional(v.boolean()),
   }).index("by_name", ["name"]),
+
+  goalUpvotes: defineTable({
+    goalId: v.id("goals"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_goal", ["goalId"])
+    .index("by_user", ["userId"])
+    .index("by_goal_user", ["goalId", "userId"]),
 })

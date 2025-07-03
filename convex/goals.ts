@@ -5,7 +5,7 @@ import { mutation, query } from "./_generated/server"
 export const createGoal = mutation({
   args: {
     title: v.string(),
-    description: v.string(),
+    description: v.optional(v.string()),
     deadline: v.number(),
     pledgeAmount: v.number(),
     userId: v.id("users"),
@@ -22,8 +22,9 @@ export const createGoal = mutation({
       throw new Error("Goal title cannot be empty")
     }
 
-    if (args.description.trim().length === 0) {
-      throw new Error("Goal description cannot be empty")
+    if (typeof args.description === 'string' && args.description.trim().length === 0) {
+      // If description is provided but empty, treat as no description
+      args.description = undefined;
     }
 
     if (args.pledgeAmount <= 0) {
@@ -78,7 +79,7 @@ export const createGoal = mutation({
 
       const goalId = await ctx.db.insert("goals", {
         title: args.title.trim(),
-        description: args.description.trim(),
+        description: typeof args.description === 'string' ? args.description.trim() : undefined,
         deadline: args.deadline,
         pledgeAmount: args.pledgeAmount,
         status: args.status ?? "active",
@@ -578,5 +579,85 @@ export const updatePaymentStatus = mutation({
       console.error("Error updating goal payment status:", error)
       throw new Error("Failed to update payment status")
     }
+  },
+})
+
+// Add upvote to a goal
+export const upvoteGoal = mutation({
+  args: {
+    goalId: v.id("goals"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Prevent duplicate upvotes
+    const existing = await ctx.db
+      .query("goalUpvotes")
+      .withIndex("by_goal_user", (q) => q.eq("goalId", args.goalId).eq("userId", args.userId))
+      .unique()
+    if (existing) return existing._id
+    return await ctx.db.insert("goalUpvotes", {
+      goalId: args.goalId,
+      userId: args.userId,
+      createdAt: Date.now(),
+    })
+  },
+})
+
+// Remove upvote from a goal
+export const unupvoteGoal = mutation({
+  args: {
+    goalId: v.id("goals"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("goalUpvotes")
+      .withIndex("by_goal_user", (q) => q.eq("goalId", args.goalId).eq("userId", args.userId))
+      .unique()
+    if (existing) {
+      await ctx.db.delete(existing._id)
+      return true
+    }
+    return false
+  },
+})
+
+// Get upvote count for a goal
+export const getGoalUpvoteCount = query({
+  args: { goalId: v.id("goals") },
+  handler: async (ctx, args) => {
+    const upvotes = await ctx.db
+      .query("goalUpvotes")
+      .withIndex("by_goal", (q) => q.eq("goalId", args.goalId))
+      .collect()
+    return upvotes.length
+  },
+})
+
+// Get all goalIds upvoted by a user
+export const getUserUpvotedGoalIds = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const upvotes = await ctx.db
+      .query("goalUpvotes")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect()
+    return upvotes.map((u) => u.goalId)
+  },
+})
+
+// Get upvote counts for multiple goals
+export const getGoalUpvoteCounts = query({
+  args: { goalIds: v.array(v.id("goals")) },
+  handler: async (ctx, args) => {
+    const counts: Record<string, number> = {}
+    for (const goalId of args.goalIds) {
+      const upvotes = await ctx.db
+        .query("goalUpvotes")
+        .withIndex("by_goal", (q) => q.eq("goalId", goalId))
+        .collect()
+      counts[goalId] = upvotes.length
+    }
+    return counts
   },
 })

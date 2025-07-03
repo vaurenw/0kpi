@@ -44,7 +44,7 @@ export function Header() {
   }
 
   return (
-    <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-6">
+    <header className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pt-2">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-14 relative">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center">

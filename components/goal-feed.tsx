@@ -19,6 +19,23 @@ export function GoalFeed() {
   const goals = publicGoals?.goals || []
   const isLoading = publicGoals === undefined
 
+  // Remove the broken multi-query logic and fetch all upvote counts in one query
+  const goalIds = goals.map((g) => g._id)
+  const upvoteCounts = useQuery(
+    api.goals.getGoalUpvoteCounts,
+    goalIds.length > 0 ? { goalIds } : "skip"
+  )
+
+  // Sort goals by upvote count (descending)
+  let sortedGoals = goals
+  if (upvoteCounts && typeof upvoteCounts === 'object') {
+    sortedGoals = [...goals].sort((a, b) => {
+      const aCount = upvoteCounts[a._id] ?? 0
+      const bCount = upvoteCounts[b._id] ?? 0
+      return bCount - aCount
+    })
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -48,36 +65,37 @@ export function GoalFeed() {
         </div>
 
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-1">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="border border-border/40 rounded-lg p-4 animate-pulse">
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-muted rounded-full"></div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-muted rounded w-3/4"></div>
-                    <div className="h-3 bg-muted rounded w-1/2"></div>
-                    <div className="h-3 bg-muted rounded w-2/3"></div>
-                  </div>
+              <div key={i} className="flex items-center gap-3 py-2 animate-pulse">
+                <div className="w-6 h-6 bg-muted rounded-full"></div>
+                <div className="flex-1 space-y-1">
+                  <div className="h-3 bg-muted rounded w-3/4"></div>
+                  <div className="h-2 bg-muted rounded w-1/2"></div>
+                  <div className="h-2 bg-muted rounded w-2/3"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="space-y-3">
-            {goals.map((goal) => (
-              <GoalCard key={goal._id} goal={{
-                id: goal._id,
-                title: goal.title,
-                description: goal.description,
-                deadline: goal.deadline,
-                pledgeAmount: goal.pledgeAmount,
-                completed: goal.completed,
-                paymentProcessed: goal.paymentProcessed,
-                userId: goal.userId,
-                userName: goal.user?.name || "Unknown User",
-                userImage: goal.user?.imageUrl,
-                creationTime: goal._creationTime,
-              }} />
+          <div className="space-y-1">
+            {sortedGoals.map((goal, idx) => (
+              <div key={goal._id}>
+                <GoalCard goal={{
+                  id: goal._id,
+                  title: goal.title,
+                  description: goal.description,
+                  deadline: goal.deadline,
+                  pledgeAmount: goal.pledgeAmount,
+                  completed: goal.completed,
+                  paymentProcessed: goal.paymentProcessed,
+                  userId: goal.userId,
+                  userName: goal.user?.name || "Unknown User",
+                  userImage: goal.user?.imageUrl,
+                  creationTime: goal._creationTime,
+                }} />
+                {idx !== goals.length - 1 && <div className="h-px bg-muted/60 w-full my-0.5" />}
+              </div>
             ))}
 
             {goals.length === 0 && (
