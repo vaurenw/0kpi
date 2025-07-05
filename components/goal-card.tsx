@@ -20,7 +20,7 @@ interface Goal {
   completed: boolean
   paymentProcessed: boolean
   userId: string
-  userName: string
+  displayName: string
   userImage?: string
   creationTime: number
 }
@@ -88,9 +88,9 @@ export function GoalCard({ goal }: GoalCardProps) {
 
   return (
     <div className="flex items-start gap-2 py-2 px-0 text-[15px]">
-      <div className="flex flex-col items-center min-w-[32px]">
+      <div className="flex flex-col items-center min-w-[16px]">
         <button
-          className={`text-2xl leading-none font-bold select-none focus:outline-none ${optimisticUpvoted ? 'text-blue-600' : 'text-muted-foreground'} hover:text-blue-500 transition`}
+          className={`text-base leading-none font-bold select-none focus:outline-none ${optimisticUpvoted ? 'text-blue-600' : 'text-muted-foreground'} hover:text-blue-500 transition`}
           aria-label={optimisticUpvoted ? 'Remove upvote' : 'Upvote'}
           onClick={handleUpvote}
           disabled={!convexUser?._id}
@@ -119,7 +119,7 @@ export function GoalCard({ goal }: GoalCardProps) {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="font-semibold">{optimisticCount ?? 0} point{(optimisticCount ?? 0) === 1 ? '' : 's'}</span>
           <span>·</span>
-          <span>{goal.userName}</span>
+          <span>{goal.displayName}</span>
           <span>·</span>
           <span>{formatDistanceToNow(new Date(goal.creationTime), { addSuffix: true })}</span>
         </div>

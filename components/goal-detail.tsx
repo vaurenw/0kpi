@@ -21,7 +21,7 @@ interface Goal {
   completed: boolean
   paymentProcessed: boolean
   userId: string
-  userName: string
+  displayName: string
   userImage?: string
   creationTime: number
 }
@@ -121,10 +121,10 @@ export function GoalDetail({ goalId }: GoalDetailProps) {
               <div className="flex items-center space-x-2">
                 <Avatar className="w-10 h-10">
                   <AvatarImage src={goal.userImage || "/placeholder.svg?height=40&width=40"} />
-                  <AvatarFallback className="text-sm">{goal.userName?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback>
+                  <AvatarFallback className="text-sm">{goal.displayName?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{goal.userName}</p>
+                  <p className="text-sm font-medium text-foreground">{goal.displayName}</p>
                   <p className="text-xs text-muted-foreground">
                     Created {formatDistanceToNow(new Date(goal.creationTime), { addSuffix: true })}
                   </p>

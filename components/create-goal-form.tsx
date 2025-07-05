@@ -177,10 +177,10 @@ export function CreateGoalForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-3">
         <div>
-          <Label htmlFor="title" className="text-sm font-medium">
+          <Label htmlFor="title" className="text-xs sm:text-sm font-medium">
             Goal Title
           </Label>
           <Input
@@ -188,14 +188,14 @@ export function CreateGoalForm() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g., Complete my morning workout routine"
-            className="mt-1"
+            className="mt-1 text-xs sm:text-sm px-2 py-1"
             required
           />
         </div>
 
         <div>
-          <Label className="text-sm font-medium">Deadline</Label>
-          <div className="mt-1 space-y-2">
+          <Label className="text-xs sm:text-sm font-medium">Deadline</Label>
+          <div className="mt-1 space-y-1">
             <div className="relative">
               <Input
                 id="deadlineDate"

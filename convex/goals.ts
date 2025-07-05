@@ -194,8 +194,25 @@ export const getUserGoals = query({
 
       const goals = await query.order("desc").take(limit)
 
-      console.log(`Retrieved ${goals.length} goals for user ${args.userId}`)
-      return goals
+      // Get user data for each goal
+      const goalsWithUsers = await Promise.all(
+        goals.map(async (goal) => {
+          const user = await ctx.db.get(goal.userId)
+          return {
+            ...goal,
+            user: user
+              ? {
+                  name: user.name,
+                  imageUrl: user.imageUrl,
+                  clerkId: user.clerkId,
+                }
+              : null,
+          }
+        }),
+      )
+
+      console.log(`Retrieved ${goalsWithUsers.length} goals for user ${args.userId}`)
+      return goalsWithUsers
     } catch (error) {
       console.error("Error fetching user goals:", error)
       throw new Error("Failed to fetch user goals")

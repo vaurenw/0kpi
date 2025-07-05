@@ -15,18 +15,19 @@ import Link from "next/link"
 import { useEffect, useState, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import { api as convexApi } from "@/convex/_generated/api"
+import { formatDistanceToNow, isToday, differenceInDays } from "date-fns"
 
 export default function DashboardPage() {
   return (
     <SignedIn>
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Manage your goals and account</p>
+        <div className="w-full max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-3">
+          <div className="mb-4">
+            <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Dashboard</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Manage your goals and account</p>
           </div>
-          
           <DashboardContent />
         </div>
       </div>
@@ -39,6 +40,11 @@ function DashboardContent() {
   const { convexUser } = useAuth()
   const searchParams = useSearchParams()
   const hasProcessedSuccess = useRef(false)
+  const updateUserName = useMutation(convexApi.users.updateUserName)
+  const [displayName, setDisplayName] = useState("")
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [localDisplayName, setLocalDisplayName] = useState("")
   
   // Handle success redirect from Stripe Checkout
   useEffect(() => {
@@ -101,50 +107,111 @@ function DashboardContent() {
     convexUser?._id ? { userId: convexUser._id } : "skip"
   )
 
-  if (!user) return null
+  useEffect(() => {
+    if (convexUser?.name) {
+      setDisplayName(convexUser.name)
+      if (!editing) {
+        setLocalDisplayName(convexUser.name)
+      }
+    }
+  }, [convexUser?.name, editing])
+
+  const handleDisplayNameSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!convexUser?._id || !localDisplayName.trim()) return
+    
+    setSaving(true)
+    try {
+      await updateUserName({ userId: convexUser._id, name: localDisplayName.trim() })
+      setEditing(false)
+      setDisplayName(localDisplayName.trim())
+      toast.success("Display name updated!")
+    } catch (err) {
+      toast.error("Failed to update display name")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const goals = userGoals || []
   const isLoading = userGoals === undefined
+  const completeGoal = useMutation(api.goals.completeGoal)
+  const [completingGoalId, setCompletingGoalId] = useState<string | null>(null)
 
   return (
-    <Tabs defaultValue="goals" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="goals" className="flex items-center space-x-2">
-          <Target className="w-4 h-4" />
-          <span>My Goals</span>
-        </TabsTrigger>
-        <TabsTrigger value="profile" className="flex items-center space-x-2">
-          <User className="w-4 h-4" />
-          <span>Profile</span>
-        </TabsTrigger>
-      </TabsList>
+    <div className="space-y-6">
+      {/* Profile section at the top */}
+      <div className="mb-3">
+        <div className="flex flex-col gap-1 w-full max-w-xs">
+          <label htmlFor="displayName" className="text-sm font-medium">Display Name</label>
+          {editing ? (
+            <form onSubmit={handleDisplayNameSave} className="flex gap-1">
+              <input
+                id="displayName"
+                className="bg-[#f3f5f7] border border-[#bfc3c7] rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition flex-1"
+                value={localDisplayName}
+                onChange={e => setLocalDisplayName(e.target.value)}
+                disabled={saving}
+                maxLength={32}
+                required
+                placeholder="Display name..."
+                style={{ boxShadow: '0 1px 2px 0 #bfc3c7' }}
+                autoFocus
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : "Save"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                onClick={() => {
+                  setEditing(false)
+                  setLocalDisplayName("")
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+            </form>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="bg-[#f3f5f7] border border-[#bfc3c7] rounded px-2 py-1 text-sm flex-1">
+                {convexUser?.name || "No display name set"}
+              </span>
+              <Button
+                size="sm"
+                className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                onClick={() => {
+                  setEditing(true)
+                  setLocalDisplayName(convexUser?.name || "")
+                }}
+              >
+                Edit
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
-      <TabsContent value="goals" className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">My Goals</h2>
-            <p className="text-sm text-muted-foreground">Track your personal goals and pledges</p>
-          </div>
+      {/* Goals section */}
+      <div>
+        <div className="flex justify-between items-center mb-1">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">My Goals</h2>
           <Link href="/create-goal">
-            <Button size="sm" className="h-8">
-              <Plus className="w-4 h-4 mr-1" />
+            <Button size="sm" className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 h-7 sm:h-8 px-3 text-sm">
               Create Goal
             </Button>
           </Link>
         </div>
-        
         <GoalsContent goals={goals} isLoading={isLoading} />
-      </TabsContent>
-
-      <TabsContent value="profile" className="space-y-6">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Profile</h2>
-          <p className="text-sm text-muted-foreground">Manage your account and preferences</p>
-        </div>
-        
-        <ProfileContent goals={goals} />
-      </TabsContent>
-    </Tabs>
+      </div>
+    </div>
   )
 }
 
@@ -156,150 +223,90 @@ function GoalsContent({ goals, isLoading }: { goals: any[], isLoading: boolean }
   // Deduplicate goals by _id
   const uniqueGoals = Array.from(new Map(goals.map(g => [g._id, g])).values())
 
-  const handleCompleteGoal = async (goalId: string) => {
-    if (!convexUser) {
-      toast.error("You must be logged in to complete goals")
-      return
-    }
-
-    setCompletingGoalId(goalId)
-    
-    try {
-      await completeGoal({
-        goalId,
-        userId: convexUser._id,
-      })
-      
-      toast.success("Goal completed successfully! 🎉")
-    } catch (error) {
-      console.error("Error completing goal:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to complete goal")
-    } finally {
-      setCompletingGoalId(null)
-    }
-  }
-
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <ol className="bg-[#f6f6ef] w-full rounded p-0 m-0">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="space-y-3">
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-                <div className="h-3 bg-muted rounded w-1/2"></div>
-                <div className="h-3 bg-muted rounded w-2/3"></div>
-              </div>
-            </CardContent>
-          </Card>
+          <li key={i} className="flex items-baseline px-2 py-1 text-[15px] border-0 border-b border-[#e5e5e5] last:border-b-0 animate-pulse">
+            <span className="text-xs text-muted-foreground w-6 text-right mr-2 select-none">{i + 1}.</span>
+            <span className="h-3 w-32 bg-muted rounded mr-2 inline-block" />
+            <span className="h-3 w-16 bg-muted rounded mr-2 inline-block" />
+            <span className="h-3 w-20 bg-muted rounded mr-2 inline-block" />
+            <span className="h-3 w-20 bg-muted rounded inline-block" />
+          </li>
         ))}
-      </div>
+      </ol>
     )
   }
 
   if (uniqueGoals.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No goals yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Create your first goal to start your accountability journey
-          </p>
-          <Link href="/create-goal">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Your First Goal
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
+      <div className="text-center py-12">
+        <div className="mb-4">
+          <Target className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground mb-2">No goals yet</p>
+          <p className="text-xs text-muted-foreground">Create your first goal to start your accountability journey</p>
+        </div>
+        <Link href="/create-goal">
+          <Button size="sm" className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200">Create Your First Goal</Button>
+        </Link>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-4">
-      {uniqueGoals.map((goal) => (
-        <Card key={goal._id}>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-lg">{goal.title}</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  ${goal.pledgeAmount} pledge
-                </p>
+    <ol className="bg-[#f6f6ef] w-full rounded p-0 m-0">
+      {uniqueGoals.map((goal, idx) => {
+        const now = Date.now()
+        const isExpired = goal.deadline <= now
+        const isCompleted = goal.completed
+        return (
+          <li key={goal._id} className="flex items-baseline px-2 py-1 text-[15px] border-0 border-b border-[#e5e5e5] last:border-b-0">
+            <span className="text-xs text-muted-foreground w-6 text-right mr-2 select-none">{idx + 1}.</span>
+            <div className="flex-1 min-w-0">
+              <span className="font-medium text-[15px] truncate overflow-hidden whitespace-nowrap align-middle block">{goal.title}</span>
+              <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5 text-xs text-muted-foreground items-center">
+                <span className="font-semibold">
+                  {goal.completed 
+                    ? `$${goal.pledgeAmount} saved`
+                    : goal.deadline > Date.now()
+                    ? `expires in ${formatDistanceToNow(new Date(goal.deadline), { addSuffix: false })}`
+                    : `$${goal.pledgeAmount} lost • expired ${formatDistanceToNow(new Date(goal.deadline), { addSuffix: true })}`
+                  }
+                </span>
+                <span>by {goal.user?.name || "Unknown"}</span>
+                <span>{isCompleted ? "Completed" : isExpired ? "Expired" : "Active"}</span>
+                {!goal.completed && goal.deadline > Date.now() && (
+                  <Button
+                    size="xs"
+                    className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 ml-2 h-6 text-xs"
+                    disabled={completingGoalId === goal._id}
+                    onClick={async () => {
+                      if (!convexUser?._id) return
+                      setCompletingGoalId(goal._id)
+                      try {
+                        await completeGoal({ goalId: goal._id, userId: convexUser._id })
+                        toast.success("Goal marked as complete!")
+                      } catch (err) {
+                        toast.error("Failed to mark as complete")
+                      } finally {
+                        setCompletingGoalId(null)
+                      }
+                    }}
+                  >
+                    {completingGoalId === goal._id ? (
+                      <span className="flex items-center"><span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />Saving...</span>
+                    ) : (
+                      <span className="flex items-center">Mark as Complete</span>
+                    )}
+                  </Button>
+                )}
               </div>
-              <GoalStatus goal={goal} />
             </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              {goal.description}
-            </p>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div className="flex items-center">
-                <Clock className="w-3 h-3 mr-1" />
-                Deadline: {new Date(goal.deadline).toLocaleDateString()}
-              </div>
-              <div>
-                Created: {new Date(goal._creationTime).toLocaleDateString()}
-              </div>
-            </div>
-            
-            {/* Completion Button */}
-            {!goal.completed && goal.deadline > Date.now() && (
-              <div className="mt-4 pt-3 border-t border-border/40">
-                <Button 
-                  onClick={() => handleCompleteGoal(goal._id)}
-                  disabled={completingGoalId === goal._id}
-                  className="w-full"
-                  size="sm"
-                >
-                  {completingGoalId === goal._id ? (
-                    <>
-                      <div className="w-4 h-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      Completing...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Mark as Completed
-                    </>
-                  )}
-                </Button>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Complete this goal to avoid being charged ${goal.pledgeAmount}
-                </p>
-              </div>
-            )}
-
-            {/* Success Message */}
-            {goal.completed && (
-              <div className="mt-4 pt-3 border-t border-border/40">
-                <div className="flex items-center justify-center text-green-600">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  <span className="text-sm font-medium">
-                    Goal completed! Saved ${goal.pledgeAmount} 🎉
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Expired Message */}
-            {!goal.completed && goal.deadline <= Date.now() && (
-              <div className="mt-4 pt-3 border-t border-border/40">
-                <div className="flex items-center justify-center text-red-600">
-                  <XCircle className="w-4 h-4 mr-2" />
-                  <span className="text-sm font-medium">
-                    Goal expired. Payment may be processed.
-                  </span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 

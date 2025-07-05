@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useQuery } from "convex/react"
+import { useState, useEffect } from "react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { GoalCard } from "./goal-card"
 import { Header } from "./header"
@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 import { SignedIn, SignedOut } from "@clerk/nextjs"
+import { useAuth } from "@/lib/hooks/use-auth"
+import { formatDistanceToNow, isToday, differenceInDays } from "date-fns"
 
 export function GoalFeed() {
   const [limit] = useState(20)
@@ -36,33 +38,34 @@ export function GoalFeed() {
     })
   }
 
+  // Auth and upvote state
+  const { convexUser } = useAuth()
+  const upvoteGoal = useMutation(api.goals.upvoteGoal)
+  const unupvoteGoal = useMutation(api.goals.unupvoteGoal)
+  const userUpvotedGoals = useQuery(
+    api.goals.getUserUpvotedGoalIds,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  )
+  // Optimistic state for upvotes
+  const [optimisticUpvoted, setOptimisticUpvoted] = useState<{ [goalId: string]: boolean }>({})
+
+  useEffect(() => {
+    if (userUpvotedGoals && convexUser?._id) {
+      setOptimisticUpvoted(
+        userUpvotedGoals.reduce((acc: any, id: string) => {
+          acc[id] = true
+          return acc
+        }, {})
+      )
+    }
+  }, [userUpvotedGoals, convexUser])
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Goal Feed</h1>
-            <p className="text-sm text-muted-foreground">See what everyone is working on</p>
-          </div>
-          <SignedIn>
-            <Link href="/create-goal">
-              <Button size="sm" className="h-8">
-                <Plus className="w-4 h-4 mr-1" />
-                Create
-              </Button>
-            </Link>
-          </SignedIn>
-          <SignedOut>
-            <Link href="/sign-up">
-              <Button size="sm" className="h-8">
-                <Plus className="w-4 h-4 mr-1" />
-                Create
-              </Button>
-            </Link>
-          </SignedOut>
-        </div>
+      <main className="w-full max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-3 flex flex-col items-center">
+        {/* No heading, compact feed style */}
 
         {isLoading ? (
           <div className="space-y-1">
@@ -78,25 +81,49 @@ export function GoalFeed() {
             ))}
           </div>
         ) : (
-          <div className="space-y-1">
-            {sortedGoals.map((goal, idx) => (
-              <div key={goal._id}>
-                <GoalCard goal={{
-                  id: goal._id,
-                  title: goal.title,
-                  description: goal.description,
-                  deadline: goal.deadline,
-                  pledgeAmount: goal.pledgeAmount,
-                  completed: goal.completed,
-                  paymentProcessed: goal.paymentProcessed,
-                  userId: goal.userId,
-                  userName: goal.user?.name || "Unknown User",
-                  userImage: goal.user?.imageUrl,
-                  creationTime: goal._creationTime,
-                }} />
-                {idx !== goals.length - 1 && <div className="h-px bg-muted/60 w-full my-0.5" />}
-              </div>
-            ))}
+          <ol className="bg-[#f6f6ef] w-full rounded p-0 m-0">
+            {sortedGoals.map((goal, idx) => {
+              const userUpvoted = !!optimisticUpvoted[goal._id]
+              const upvoteDisabled = !convexUser?._id
+              const handleUpvote = async () => {
+                if (!convexUser?._id) return
+                if (userUpvoted) {
+                  setOptimisticUpvoted((prev) => ({ ...prev, [goal._id]: false }))
+                  await unupvoteGoal({ goalId: goal._id, userId: convexUser._id })
+                } else {
+                  setOptimisticUpvoted((prev) => ({ ...prev, [goal._id]: true }))
+                  await upvoteGoal({ goalId: goal._id, userId: convexUser._id })
+                }
+              }
+              return (
+                <li key={goal._id} className="px-1 py-1 text-[14px] sm:text-[15px] border-0 border-b border-[#e5e5e5] last:border-b-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground w-5 text-right mr-1 select-none">{idx + 1}.</span>
+                    <span className="flex items-center">
+                      <UpvoteButton goalId={goal._id} upvoted={userUpvoted} onClick={handleUpvote} disabled={upvoteDisabled} />
+                    </span>
+                    <span
+                      className="font-medium truncate overflow-hidden whitespace-nowrap align-middle block flex-1 min-w-0 text-[14px] sm:text-[15px]"
+                      title={goal.title}
+                    >
+                      {goal.title}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-1 gap-y-0.5 mt-0.5 text-xs text-muted-foreground pl-6">
+                    <span className="font-semibold">
+                      {goal.completed 
+                        ? `$${goal.pledgeAmount} saved`
+                        : goal.deadline > Date.now()
+                        ? `expires in ${formatDistanceToNow(new Date(goal.deadline), { addSuffix: false })}`
+                        : `$${goal.pledgeAmount} lost • expired ${formatDistanceToNow(new Date(goal.deadline), { addSuffix: true })}`
+                      }
+                    </span>
+                    <span>by {goal.user?.name || "Unknown"}</span>
+                    <span>{upvoteCounts?.[goal._id] ?? 0} points</span>
+                  </div>
+                </li>
+              )
+            })}
 
             {goals.length === 0 && (
               <div className="text-center py-12">
@@ -119,9 +146,23 @@ export function GoalFeed() {
                 </SignedOut>
               </div>
             )}
-          </div>
+          </ol>
         )}
       </main>
     </div>
+  )
+}
+
+function UpvoteButton({ goalId, upvoted, onClick, disabled }: { goalId: string, upvoted: boolean, onClick: () => void, disabled: boolean }) {
+  return (
+    <button
+      aria-label={upvoted ? 'Remove upvote' : 'Upvote'}
+      onClick={onClick}
+      disabled={disabled}
+      className={`text-xs px-1 select-none focus:outline-none ${upvoted ? 'text-orange-500' : 'text-gray-400 hover:text-orange-500'} bg-transparent border-0`}
+      style={{ lineHeight: 1, cursor: disabled ? 'not-allowed' : 'pointer', background: 'none' }}
+    >
+      ▲
+    </button>
   )
 }

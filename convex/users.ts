@@ -31,16 +31,23 @@ export const createOrUpdateUser = mutation({
         .unique()
 
       if (existingUser) {
-        // Update existing user
-        await ctx.db.patch(existingUser._id, {
+        // Update existing user (preserve custom display name)
+        const updates: any = {
           email: args.email.trim(),
-          name: args.name.trim(),
           imageUrl: args.imageUrl,
-        })
+        }
+        
+        // Only update name if it's the default Clerk name and user hasn't set a custom one
+        // This prevents overwriting custom display names
+        if (!existingUser.name || existingUser.name === args.name.trim()) {
+          updates.name = args.name.trim()
+        }
+        
+        await ctx.db.patch(existingUser._id, updates)
         console.log(`Updated existing user: ${existingUser._id}`)
         return existingUser._id
       } else {
-        // Create new user
+        // Create new user with display name only
         const userId = await ctx.db.insert("users", {
           clerkId: args.clerkId.trim(),
           email: args.email.trim(),
@@ -268,6 +275,36 @@ export const deleteUserAccount = mutation({
     } catch (error) {
       console.error("Error deleting user account:", error)
       throw error
+    }
+  },
+})
+
+// Update user display name only
+export const updateUserName = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!args.name || args.name.trim().length === 0) {
+      throw new Error("Name is required")
+    }
+    
+    try {
+      // Get current user to verify it exists
+      const currentUser = await ctx.db.get(args.userId)
+      
+      if (!currentUser) {
+        throw new Error("User not found")
+      }
+      
+      await ctx.db.patch(args.userId, { name: args.name.trim() })
+      console.log(`Updated user name for user: ${args.userId} from "${currentUser.name}" to "${args.name.trim()}"`)
+      
+      return { success: true }
+    } catch (error) {
+      console.error("Error updating user name:", error)
+      throw new Error("Failed to update user name")
     }
   },
 })

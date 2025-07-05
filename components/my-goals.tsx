@@ -21,7 +21,7 @@ interface Goal {
   completed: boolean
   paymentProcessed: boolean
   userId: string
-  userName: string
+  displayName: string
   userImage?: string
   creationTime: number
 }

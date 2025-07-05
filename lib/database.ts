@@ -9,7 +9,7 @@ export interface Goal {
   paymentProcessed: boolean
   paymentIntentId?: string
   userId: string
-  userName: string
+  displayName: string
   userImage?: string
   creationTime: number
 }
@@ -21,7 +21,7 @@ export interface CreateGoalData {
   pledgeAmount: number
   paymentIntentId?: string
   userId: string
-  userName: string
+  displayName: string
   userImage?: string
 }
 
