@@ -111,6 +111,8 @@ export function GoalCard({ goal }: GoalCardProps) {
             <span>Saved ${goal.pledgeAmount}</span>
           ) : goal.paymentProcessed ? (
             <span>Lost ${goal.pledgeAmount}</span>
+          ) : !isExpired ? (
+            <span>Pledged ${goal.pledgeAmount} · Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
           ) : (
             <span>Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
           )}
