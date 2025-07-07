@@ -10,6 +10,7 @@ import { useState, useEffect } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useAuth } from "@/lib/hooks/use-auth"
+import type { Id } from "@/convex/_generated/dataModel"
 
 interface Goal {
   id: string
@@ -27,22 +28,23 @@ interface Goal {
 
 interface GoalCardProps {
   goal: Goal
+  index?: number
 }
 
-export function GoalCard({ goal }: GoalCardProps) {
+export function GoalCard({ goal, index }: GoalCardProps) {
   const { user, convexUser } = useAuth()
 
   // Upvote logic
   const upvoteGoal = useMutation(api.goals.upvoteGoal)
   const unupvoteGoal = useMutation(api.goals.unupvoteGoal)
-  const upvoteCount = useQuery(api.goals.getGoalUpvoteCount, { goalId: goal.id })
+  const upvoteCount = useQuery(api.goals.getGoalUpvoteCount, { goalId: goal.id as Id<"goals"> })
   const userUpvotedGoals = useQuery(api.goals.getUserUpvotedGoalIds, convexUser?._id ? { userId: convexUser._id } : "skip")
   const [optimisticUpvoted, setOptimisticUpvoted] = useState<boolean>(false)
   const [optimisticCount, setOptimisticCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (userUpvotedGoals && convexUser?._id) {
-      setOptimisticUpvoted(userUpvotedGoals.includes(goal.id))
+      setOptimisticUpvoted(userUpvotedGoals.includes(goal.id as Id<"goals">))
     }
   }, [userUpvotedGoals, convexUser, goal.id])
 
@@ -55,11 +57,11 @@ export function GoalCard({ goal }: GoalCardProps) {
     if (optimisticUpvoted) {
       setOptimisticUpvoted(false)
       setOptimisticCount((c) => (c !== null ? c - 1 : null))
-      await unupvoteGoal({ goalId: goal.id, userId: convexUser._id })
+      await unupvoteGoal({ goalId: goal.id as Id<"goals">, userId: convexUser._id })
     } else {
       setOptimisticUpvoted(true)
       setOptimisticCount((c) => (c !== null ? c + 1 : null))
-      await upvoteGoal({ goalId: goal.id, userId: convexUser._id })
+      await upvoteGoal({ goalId: goal.id as Id<"goals">, userId: convexUser._id })
     }
   }
 
@@ -87,8 +89,12 @@ export function GoalCard({ goal }: GoalCardProps) {
   }
 
   return (
-    <div className="flex items-start gap-2 py-2 px-0 text-[15px]">
-      <div className="flex flex-col items-center min-w-[16px]">
+    <div className="py-2 px-0 text-[15px]">
+      {/* Top row: number, triangle, headline */}
+      <div className="flex items-center gap-x-2">
+        {typeof index === 'number' && (
+          <span className="text-xs text-muted-foreground">{index + 1}.</span>
+        )}
         <button
           className={`text-base leading-none font-bold select-none focus:outline-none ${optimisticUpvoted ? 'text-blue-600' : 'text-muted-foreground'} hover:text-blue-500 transition`}
           aria-label={optimisticUpvoted ? 'Remove upvote' : 'Upvote'}
@@ -98,33 +104,33 @@ export function GoalCard({ goal }: GoalCardProps) {
         >
           ▲
         </button>
+        <div
+          className="font-medium text-foreground text-base w-full whitespace-normal break-all"
+          style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}
+        >
+          {goal.title}
+        </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="font-medium text-foreground text-base break-words whitespace-normal">
-            {goal.title}
-          </span>
-        </div>
-        <div className="text-xs text-muted-foreground mb-0.5">
-          [
-          {goal.completed ? (
-            <span>Saved ${goal.pledgeAmount}</span>
-          ) : goal.paymentProcessed ? (
-            <span>Lost ${goal.pledgeAmount}</span>
-          ) : !isExpired ? (
-            <span>Pledged ${goal.pledgeAmount} · Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-          ) : (
-            <span>Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-          )}
-          ]
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-semibold">{optimisticCount ?? 0} point{(optimisticCount ?? 0) === 1 ? '' : 's'}</span>
-          <span>·</span>
-          <span>{goal.displayName}</span>
-          <span>·</span>
-          <span>{formatDistanceToNow(new Date(goal.creationTime), { addSuffix: true })}</span>
-        </div>
+      {/* Bottom row: stats */}
+      <div className="text-xs text-muted-foreground mb-0.5 ml-[32px]">
+        [
+        {goal.completed ? (
+          <span>Saved ${goal.pledgeAmount}</span>
+        ) : goal.paymentProcessed ? (
+          <span>Lost ${goal.pledgeAmount}</span>
+        ) : !isExpired ? (
+          <span>Pledged ${goal.pledgeAmount} · Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        ) : (
+          <span>Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        )}
+        ]
+      </div>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground ml-[32px]">
+        <span className="font-semibold">{optimisticCount ?? 0} point{(optimisticCount ?? 0) === 1 ? '' : 's'}</span>
+        <span>·</span>
+        <span>{goal.displayName}</span>
+        <span>·</span>
+        <span>{formatDistanceToNow(new Date(goal.creationTime), { addSuffix: true })}</span>
       </div>
     </div>
   )

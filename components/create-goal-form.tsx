@@ -88,6 +88,7 @@ export function CreateGoalForm() {
   const isFormValid = () => {
     return (
       title.trim().length > 0 &&
+      title.trim().length <= 88 &&
       deadlineDate.length > 0 &&
       deadlineTime.length > 0 &&
       pledgeAmount.length > 0 &&
@@ -101,7 +102,11 @@ export function CreateGoalForm() {
     e.preventDefault()
 
     if (!isFormValid()) {
-      toast.error("Please fill in all fields correctly")
+      if (title.trim().length > 88) {
+        toast.error("Goal title must be 88 characters or fewer")
+      } else {
+        toast.error("Please fill in all fields correctly")
+      }
       return
     }
 
@@ -190,6 +195,7 @@ export function CreateGoalForm() {
             placeholder="e.g., Complete my morning workout routine"
             className="mt-1 text-xs sm:text-sm px-2 py-1"
             required
+            maxLength={88}
           />
         </div>
 
