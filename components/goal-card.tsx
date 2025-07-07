@@ -101,7 +101,7 @@ export function GoalCard({ goal }: GoalCardProps) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="font-medium text-foreground truncate text-base">
+          <span className="font-medium text-foreground text-base break-words whitespace-normal">
             {goal.title}
           </span>
         </div>
