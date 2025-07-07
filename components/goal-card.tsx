@@ -91,46 +91,46 @@ export function GoalCard({ goal, index }: GoalCardProps) {
   return (
     <div className="py-2 px-0 text-[15px]">
       {/* Top row: number, triangle, headline */}
-      <div className="flex items-center gap-x-2">
+      <div className="flex items-center gap-x-1">
         {typeof index === 'number' && (
-          <span className="text-xs text-muted-foreground">{index + 1}.</span>
+          <span className="text-[11px] text-muted-foreground flex-shrink-0 w-5 text-right">{index + 1}.</span>
         )}
         <button
-          className={`text-base leading-none font-bold select-none focus:outline-none ${optimisticUpvoted ? 'text-blue-600' : 'text-muted-foreground'} hover:text-blue-500 transition`}
+          className={`select-none focus:outline-none flex-shrink-0 text-[13px] leading-none`}
           aria-label={optimisticUpvoted ? 'Remove upvote' : 'Upvote'}
           onClick={handleUpvote}
           disabled={!convexUser?._id}
-          style={{ background: 'none', border: 'none', cursor: convexUser?._id ? 'pointer' : 'not-allowed', padding: 0 }}
+          style={{
+            color: optimisticUpvoted ? '#ff6600' : '#b0b0b0',
+            background: 'none',
+            border: 'none',
+            cursor: convexUser?._id ? 'pointer' : 'not-allowed',
+            padding: 0,
+            fontWeight: 700,
+          }}
         >
           ▲
         </button>
-        <div
-          className="font-medium text-foreground text-base w-full whitespace-normal break-all"
-          style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}
-        >
-          {goal.title}
+        <div className="flex-1 min-w-0">
+          <div className="font-medium text-foreground text-sm break-words whitespace-normal">
+            {goal.title}
+          </div>
         </div>
       </div>
       {/* Bottom row: stats */}
-      <div className="text-xs text-muted-foreground mb-0.5 ml-[32px]">
-        [
-        {goal.completed ? (
+      <div className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground pl-[2.5em] mt-0.5">
+        {/* Main stat */}
+        {goal.completed && !isExpired ? (
           <span>Saved ${goal.pledgeAmount}</span>
-        ) : goal.paymentProcessed ? (
-          <span>Lost ${goal.pledgeAmount}</span>
-        ) : !isExpired ? (
-          <span>Pledged ${goal.pledgeAmount} · Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-        ) : (
-          <span>Expires {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-        )}
-        ]
-      </div>
-      <div className="flex items-center gap-2 text-xs text-muted-foreground ml-[32px]">
-        <span className="font-semibold">{optimisticCount ?? 0} point{(optimisticCount ?? 0) === 1 ? '' : 's'}</span>
+        ) : !goal.completed && !isExpired ? (
+          <span>Pledged ${goal.pledgeAmount} · KPI due on {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        ) : !goal.completed && isExpired ? (
+          <span>Lost ${goal.pledgeAmount} on {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        ) : null}
         <span>·</span>
         <span>{goal.displayName}</span>
         <span>·</span>
-        <span>{formatDistanceToNow(new Date(goal.creationTime), { addSuffix: true })}</span>
+        <span>{optimisticCount ?? 0} upvote{(optimisticCount ?? 0) === 1 ? '' : 's'}</span>
       </div>
     </div>
   )
