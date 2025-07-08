@@ -9,24 +9,31 @@ export async function POST(request: NextRequest) {
   try {
     const { paymentMethodId, amount, customerId, goalId } = await request.json()
 
-    // Validate input
-    if (!paymentMethodId) {
+    // Validate and sanitize input
+    if (!paymentMethodId || typeof paymentMethodId !== 'string' || paymentMethodId.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Payment method ID is required' },
+        { error: 'Valid payment method ID is required' },
         { status: 400 }
       )
     }
 
-    if (!amount || amount <= 0) {
+    if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 10000) {
       return NextResponse.json(
-        { error: 'Valid amount is required' },
+        { error: 'Valid amount is required (between $0.01 and $10,000)' },
         { status: 400 }
       )
     }
 
-    if (!customerId) {
+    if (!customerId || typeof customerId !== 'string' || customerId.trim().length === 0) {
       return NextResponse.json(
-        { error: 'Customer ID is required' },
+        { error: 'Valid customer ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (goalId && (typeof goalId !== 'string' || goalId.trim().length === 0)) {
+      return NextResponse.json(
+        { error: 'Invalid goal ID' },
         { status: 400 }
       )
     }

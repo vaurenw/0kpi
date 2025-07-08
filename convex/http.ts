@@ -25,12 +25,9 @@ http.route({
         return new Response("Webhook secret not configured", { status: 500 })
       }
 
-      // Note: In a real implementation, you would verify the webhook signature here
-      // const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-      // const event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-
-      // For now, we'll parse the body as JSON (replace with proper verification)
-      const event = JSON.parse(body)
+      // Verify webhook signature
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+      const event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
 
       console.log(`Processing Stripe webhook: ${event.type}`)
 

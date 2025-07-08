@@ -11,6 +11,13 @@ export async function POST(request: NextRequest) {
   const headersList = await headers()
   const signature = headersList.get('stripe-signature')
 
+  console.log('[WEBHOOK] Webhook received:', {
+    bodyLength: body.length,
+    hasSignature: !!signature,
+    userAgent: headersList.get('user-agent'),
+    contentType: headersList.get('content-type'),
+  })
+
   if (!signature) {
     console.error('[WEBHOOK] No signature header received')
     return NextResponse.json(

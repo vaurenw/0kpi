@@ -30,15 +30,19 @@ export const processExpiredGoalsAction = internalAction({
                 continue;
               }
 
-              // Use the app URL from environment or fallback
-              const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://4f92-173-32-210-210.ngrok-free.app";
+              // Use the app URL from environment
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+              if (!appUrl) {
+                console.error('NEXT_PUBLIC_APP_URL not configured');
+                continue;
+              }
               
               // Create a PaymentIntent using the saved payment method
               const response = await fetch(`${appUrl}/api/stripe/charge-payment-method`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${process.env.INTERNAL_API_KEY || 'your-internal-api-key'}`,
+                  'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
                 },
                 body: JSON.stringify({
                   paymentMethodId: goal.paymentMethodId,

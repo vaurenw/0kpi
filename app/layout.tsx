@@ -3,7 +3,11 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ClerkProvider } from "@clerk/nextjs"
 import { Providers } from "@/components/providers"
+import ErrorBoundary from "@/components/error-boundary"
 import "./globals.css"
+
+// Validate environment variables on startup
+import "@/lib/env"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,11 +26,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClerkProvider>
-          <Providers>
-            {children}
-          </Providers>
-        </ClerkProvider>
+        <ErrorBoundary>
+          <ClerkProvider>
+            <Providers>
+              {children}
+            </Providers>
+          </ClerkProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

@@ -757,3 +757,52 @@ export const getGoalCompletionData = query({
     }
   },
 })
+
+// Get pending goal by user, title, and deadline
+export const getPendingGoalByUser = query({
+  args: {
+    userId: v.id("users"),
+    title: v.string(),
+    deadline: v.number(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const goal = await ctx.db
+        .query("goals")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("title"), args.title.trim()),
+            q.eq(q.field("deadline"), args.deadline),
+            q.eq(q.field("status"), "pending")
+          )
+        )
+        .unique()
+      
+      return goal
+    } catch (error) {
+      console.error("Error fetching pending goal:", error)
+      return null
+    }
+  },
+})
+
+// Update goal with session ID
+export const updateGoalWithSession = mutation({
+  args: {
+    goalId: v.id("goals"),
+    stripeSessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      await ctx.db.patch(args.goalId, {
+        stripeSessionId: args.stripeSessionId,
+      })
+      console.log(`Goal updated with session ID: ${args.goalId} -> ${args.stripeSessionId}`)
+      return args.goalId
+    } catch (error) {
+      console.error("Error updating goal with session ID:", error)
+      throw error
+    }
+  },
+})

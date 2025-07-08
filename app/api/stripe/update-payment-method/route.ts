@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
       payment_method_types: ['card'],
       mode: 'setup',
       currency: 'usd',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}&update_payment=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/my-goals?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}&update_payment=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/my-goals?canceled=true`,
       metadata: {
         goalId: goalId,
         userId: goal.userId,

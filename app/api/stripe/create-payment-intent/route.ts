@@ -9,12 +9,15 @@ export async function POST(request: NextRequest) {
   try {
     const { amount, goalId, userId } = await request.json()
 
-    // Validate input
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+    // Validate and sanitize input
+    if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 10000) {
+      return NextResponse.json({ error: 'Invalid amount (must be between $0.01 and $10,000)' }, { status: 400 })
     }
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+      return NextResponse.json({ error: 'Valid user ID is required' }, { status: 400 })
+    }
+    if (goalId && (typeof goalId !== 'string' || goalId.trim().length === 0)) {
+      return NextResponse.json({ error: 'Invalid goal ID' }, { status: 400 })
     }
 
     // Get user from Convex
@@ -57,8 +60,8 @@ export async function POST(request: NextRequest) {
       payment_method_types: ['card'],
       mode: 'setup',
       currency: 'usd', // Required for setup mode with dynamic payment methods
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/create-goal?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/create-goal?canceled=true`,
       metadata: {
         goalId: goalId || '',
         userId: userId,

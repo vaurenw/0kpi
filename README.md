@@ -43,14 +43,20 @@ npm start
 
 Copy `example.env` to `.env.local` and add your API keys:
 
+### Required Variables
 - `NEXT_PUBLIC_CONVEX_URL` - Convex deployment URL
-- `STRIPE_SECRET_KEY` - Stripe secret key
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
-- `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret
-- `STRIPE_GOAL_PLEDGE_PRODUCT_ID` - Stripe product ID
-- `NEXT_PUBLIC_APP_URL` - Your app URL
-- `INTERNAL_API_KEY` - Internal API key
-- `CRON_SECRET` - Cron job secret
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk publishable key
+- `CLERK_SECRET_KEY` - Clerk secret key
+- `STRIPE_SECRET_KEY` - Stripe secret key (starts with `sk_`)
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key (starts with `pk_`)
+- `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret (starts with `whsec_`)
+- `INTERNAL_API_KEY` - Secure random string for internal API authentication
+- `NEXT_PUBLIC_APP_URL` - Your app URL (e.g., `http://localhost:3000` for development)
+
+### Optional Variables
+- `CRON_SECRET` - Secure random string for cron job authentication
+- `RESEND_API_KEY` - For email notifications (optional)
+- `FROM_EMAIL` - Email address for notifications (optional)
 
 ## Convex Commands
 
