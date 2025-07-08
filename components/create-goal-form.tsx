@@ -109,7 +109,7 @@ export function CreateGoalForm() {
       } else if (deadlineDate.length === 0 || deadlineTime.length === 0) {
         toast.error("Please select a deadline date and time")
       } else if (pledgeAmount.length === 0 || isNaN(Number.parseFloat(pledgeAmount)) || Number.parseFloat(pledgeAmount) <= 0) {
-        toast.error("Please enter a valid pledge amount (minimum $1)")
+        toast.error("Please enter a valid pledge amount (minimum $0.01)")
       } else {
         toast.error("Please fill in all fields correctly")
       }
@@ -142,7 +142,7 @@ export function CreateGoalForm() {
       // Validate pledge amount
       const amount = Number.parseFloat(pledgeAmount)
       if (isNaN(amount) || amount <= 0) {
-        toast.error("Please enter a pledge amount greater than $0")
+        toast.error("Please enter a pledge amount greater than $0.01")
         setIsSubmitting(false)
         return
       }
@@ -209,7 +209,7 @@ export function CreateGoalForm() {
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Complete my morning workout routine"
+            placeholder="e.g., Build Open Source LinkedIn Alternative"
             className="mt-1 text-xs sm:text-sm px-2 py-1"
             required
             maxLength={88}
@@ -253,7 +253,7 @@ export function CreateGoalForm() {
               id="pledgeAmount"
               type="number"
               step="0.01"
-              min="1"
+              min="0.01"
               max="10000"
               value={pledgeAmount}
               onChange={(e) => setPledgeAmount(e.target.value)}
@@ -264,7 +264,7 @@ export function CreateGoalForm() {
             <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            This amount will be charged if you don't complete your goal by the deadline
+            This amount will be charged if you don't complete your goal by the deadline. You can set any amount from $0.01 to $10,000.
           </p>
         </div>
       </div>
