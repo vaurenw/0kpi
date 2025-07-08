@@ -104,6 +104,12 @@ export function CreateGoalForm() {
     if (!isFormValid()) {
       if (title.trim().length > 88) {
         toast.error("Goal title must be 88 characters or fewer")
+      } else if (title.trim().length === 0) {
+        toast.error("Please enter a goal title")
+      } else if (deadlineDate.length === 0 || deadlineTime.length === 0) {
+        toast.error("Please select a deadline date and time")
+      } else if (pledgeAmount.length === 0 || isNaN(Number.parseFloat(pledgeAmount)) || Number.parseFloat(pledgeAmount) <= 0) {
+        toast.error("Please enter a valid pledge amount (minimum $1)")
       } else {
         toast.error("Please fill in all fields correctly")
       }
@@ -111,12 +117,12 @@ export function CreateGoalForm() {
     }
 
     if (!user) {
-      toast.error("You must be logged in to create a goal")
+      toast.error("Please sign in to create a goal")
       return
     }
 
     if (!convexUser) {
-      toast.error("Please wait while we set up your account")
+      toast.error("Please wait while we set up your account, then try again")
       return
     }
 
@@ -128,7 +134,7 @@ export function CreateGoalForm() {
       const now = new Date()
       // Validate deadline is not in the past (allow same day)
       if (deadlineDateTime < new Date(now.setHours(0, 0, 0, 0))) {
-        toast.error("Deadline cannot be in the past")
+        toast.error("Please select a deadline that's today or in the future")
         setIsSubmitting(false)
         return
       }
@@ -136,7 +142,7 @@ export function CreateGoalForm() {
       // Validate pledge amount
       const amount = Number.parseFloat(pledgeAmount)
       if (isNaN(amount) || amount <= 0) {
-        toast.error("Please enter a valid pledge amount")
+        toast.error("Please enter a pledge amount greater than $0")
         setIsSubmitting(false)
         return
       }
@@ -154,11 +160,22 @@ export function CreateGoalForm() {
         }),
       })
       if (!pendingGoalRes.ok) {
-        throw new Error('Failed to create pending goal')
+        throw new Error('Failed to create goal. Please try again.')
       }
       const { goalId } = await pendingGoalRes.json()
 
-      // Step 2: Setup payment intent with Stripe and redirect to checkout
+      // Step 2: Store pending goal data in sessionStorage
+      const pendingGoalData = {
+        goalId,
+        title: title.trim(),
+        deadline: deadlineDateTime.getTime(),
+        pledgeAmount: amount,
+        userId: convexUser._id,
+        isPublic: true,
+      }
+      sessionStorage.setItem('pendingGoal', JSON.stringify(pendingGoalData))
+
+      // Step 3: Setup payment intent with Stripe and redirect to checkout
       setPaymentSetup(true)
       const paymentResult = await setupPaymentIntent({
         amount: amount,
@@ -170,12 +187,12 @@ export function CreateGoalForm() {
       if (paymentResult.url) {
         window.location.href = paymentResult.url
       } else {
-        throw new Error('No checkout URL received')
+        throw new Error('Failed to set up payment. Please try again.')
       }
 
     } catch (error) {
       console.error("Error creating goal:", error)
-      toast.error(error instanceof Error ? error.message : "Failed to create goal. Please try again.")
+      toast.error(error instanceof Error ? error.message : "Failed to create goal. Please check your details and try again.")
       setIsSubmitting(false)
       setPaymentSetup(false)
     }

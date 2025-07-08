@@ -91,12 +91,12 @@ export function GoalCard({ goal, index }: GoalCardProps) {
   return (
     <div className="py-2 px-0 text-[15px]">
       {/* Top row: number, triangle, headline */}
-      <div className="flex items-center gap-x-1">
+      <div className="flex items-center gap-x-1.5">
         {typeof index === 'number' && (
-          <span className="text-[11px] text-muted-foreground flex-shrink-0 w-5 text-right">{index + 1}.</span>
+          <span className="text-[11px] text-muted-foreground w-5 text-right flex-shrink-0">{index + 1}.</span>
         )}
         <button
-          className={`select-none focus:outline-none flex-shrink-0 text-[13px] leading-none`}
+          className="flex-shrink-0 w-5 text-[13px] leading-none select-none focus:outline-none"
           aria-label={optimisticUpvoted ? 'Remove upvote' : 'Upvote'}
           onClick={handleUpvote}
           disabled={!convexUser?._id}
@@ -107,6 +107,7 @@ export function GoalCard({ goal, index }: GoalCardProps) {
             cursor: convexUser?._id ? 'pointer' : 'not-allowed',
             padding: 0,
             fontWeight: 700,
+            textAlign: 'center',
           }}
         >
           ▲
@@ -118,12 +119,12 @@ export function GoalCard({ goal, index }: GoalCardProps) {
         </div>
       </div>
       {/* Bottom row: stats */}
-      <div className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground pl-[2.5em] mt-0.5">
+      <div className="flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground mt-0.5" style={{ paddingLeft: '2.5em' }}>
         {/* Main stat */}
         {goal.completed && !isExpired ? (
           <span>Saved ${goal.pledgeAmount}</span>
         ) : !goal.completed && !isExpired ? (
-          <span>Pledged ${goal.pledgeAmount} · KPI due on {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+          <span>Pledged ${goal.pledgeAmount} · due on {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
         ) : !goal.completed && isExpired ? (
           <span>Lost ${goal.pledgeAmount} on {new Date(goal.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
         ) : null}

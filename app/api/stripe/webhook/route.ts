@@ -111,7 +111,7 @@ async function handleCheckoutSessionCompleted(session: any) {
             console.log('[WEBHOOK] Payment method already attached to customer')
           }
           
-          // Save the payment method ID to the goal
+          // Save the payment method ID to the goal and mark payment setup as complete
           if (goalId && paymentMethod.id) {
             try {
               const result = await convex.mutation(api.goals.savePaymentMethodId, {
@@ -119,8 +119,11 @@ async function handleCheckoutSessionCompleted(session: any) {
                 paymentMethodId: paymentMethod.id,
               })
               console.log('[WEBHOOK] Payment method ID saved to goal:', goalId, 'Result:', result)
+              // Mark payment setup as complete
+              await convex.mutation(api.goals.updatePaymentSetupComplete, { goalId })
+              console.log('[WEBHOOK] Payment setup marked complete for goal:', goalId)
             } catch (error) {
-              console.error('[WEBHOOK] Error saving payment method ID to goal:', error)
+              console.error('[WEBHOOK] Error saving payment method ID to goal or updating payment setup complete:', error)
             }
           }
         } else {

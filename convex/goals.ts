@@ -92,6 +92,7 @@ export const createGoal = mutation({
         tags: args.tags || [],
         isPublic: args.isPublic ?? true,
         remindersSent: 0,
+        paymentSetupComplete: false,
       })
 
       // Create goal update log
@@ -125,6 +126,7 @@ export const getPublicGoals = query({
       let query = ctx.db
         .query("goals")
         .withIndex("by_public", (q) => q.eq("isPublic", true))
+        .filter((q) => q.eq(q.field("paymentSetupComplete"), true))
         .order("desc")
 
       if (args.cursor) {
@@ -153,6 +155,7 @@ export const getPublicGoals = query({
             user: user
               ? {
                   name: user.name,
+                  username: user.username,
                   imageUrl: user.imageUrl,
                   clerkId: user.clerkId,
                 }
@@ -203,6 +206,7 @@ export const getUserGoals = query({
             user: user
               ? {
                   name: user.name,
+                  username: user.username,
                   imageUrl: user.imageUrl,
                   clerkId: user.clerkId,
                 }
@@ -234,6 +238,7 @@ export const getGoalById = query({
         user: user
           ? {
               name: user.name,
+              username: user.username,
               imageUrl: user.imageUrl,
               clerkId: user.clerkId,
             }
@@ -676,5 +681,79 @@ export const getGoalUpvoteCounts = query({
       counts[goalId] = upvotes.length
     }
     return counts
+  },
+})
+
+// Mark payment setup as complete for a goal
+export const updatePaymentSetupComplete = mutation({
+  args: {
+    goalId: v.id("goals"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      await ctx.db.patch(args.goalId, { paymentSetupComplete: true })
+      console.log(`Payment setup marked complete for goal: ${args.goalId}`)
+      return true
+    } catch (error) {
+      console.error("Error updating paymentSetupComplete:", error)
+      throw new Error("Failed to update payment setup status")
+    }
+  },
+})
+
+// Get goal completion data for calendar graph
+export const getGoalCompletionData = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Get the user to find their account creation date
+      const user = await ctx.db.get(args.userId)
+      if (!user) {
+        throw new Error("User not found")
+      }
+
+      // Use the user's account creation date as the start date
+      const startDate = new Date(user._creationTime)
+      const startTimestamp = startDate.getTime()
+
+      // Get all completed goals for the user since account creation
+      const completedGoals = await ctx.db
+        .query("goals")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("completed"), true),
+            q.gte(q.field("completedAt"), startTimestamp)
+          )
+        )
+        .collect()
+
+      // Group goals by completion date
+      const completionMap = new Map<string, number>()
+      
+      completedGoals.forEach(goal => {
+        if (goal.completedAt) {
+          const date = new Date(goal.completedAt)
+          const dateString = date.toISOString().split('T')[0] // YYYY-MM-DD format
+          completionMap.set(dateString, (completionMap.get(dateString) || 0) + 1)
+        }
+      })
+
+      // Convert to array format expected by the calendar component
+      const result = Array.from(completionMap.entries()).map(([date, count]) => ({
+        date,
+        count
+      }))
+
+      return {
+        data: result,
+        startDate: startDate.toISOString().split('T')[0] // YYYY-MM-DD format
+      }
+    } catch (error) {
+      console.error("Error fetching goal completion data:", error)
+      throw new Error("Failed to fetch goal completion data")
+    }
   },
 })

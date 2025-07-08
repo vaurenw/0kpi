@@ -1,6 +1,49 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 
+// Generate a unique username from a name
+async function generateUniqueUsername(ctx: any, baseName: string): Promise<string> {
+  // Convert name to username format: lowercase, replace spaces/special chars with underscores
+  let username = baseName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_]/g, '_') // Replace any non-alphanumeric chars (except underscore) with underscore
+    .replace(/_+/g, '_') // Replace multiple consecutive underscores with single underscore
+    .replace(/^_|_$/g, '') // Remove leading/trailing underscores
+
+  // If username is empty after cleaning, use 'user'
+  if (!username) {
+    username = 'user'
+  }
+
+  // Check if username exists and add numbers if needed
+  let finalUsername = username
+  let counter = 1
+
+  while (true) {
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", finalUsername))
+      .unique()
+
+    if (!existingUser) {
+      break // Username is available
+    }
+
+    // Username taken, add number
+    finalUsername = `${username}${counter}`
+    counter++
+
+    // Prevent infinite loop (shouldn't happen in practice)
+    if (counter > 1000) {
+      finalUsername = `${username}_${Date.now()}`
+      break
+    }
+  }
+
+  return finalUsername
+}
+
 // Create or update user from Clerk
 export const createOrUpdateUser = mutation({
   args: {
@@ -31,7 +74,7 @@ export const createOrUpdateUser = mutation({
         .unique()
 
       if (existingUser) {
-        // Update existing user (preserve custom display name)
+        // Update existing user (preserve custom display name and username)
         const updates: any = {
           email: args.email.trim(),
           imageUrl: args.imageUrl,
@@ -43,15 +86,24 @@ export const createOrUpdateUser = mutation({
           updates.name = args.name.trim()
         }
         
+        // Generate username if user doesn't have one
+        if (!existingUser.username) {
+          updates.username = await generateUniqueUsername(ctx, args.name.trim())
+        }
+        
         await ctx.db.patch(existingUser._id, updates)
         console.log(`Updated existing user: ${existingUser._id}`)
         return existingUser._id
       } else {
-        // Create new user with display name only
+        // Generate unique username for new user
+        const username = await generateUniqueUsername(ctx, args.name.trim())
+
+        // Create new user with display name and username
         const userId = await ctx.db.insert("users", {
           clerkId: args.clerkId.trim(),
           email: args.email.trim(),
           name: args.name.trim(),
+          username: username,
           imageUrl: args.imageUrl,
           emailNotifications: true,
           totalGoalsCreated: 0,
@@ -60,7 +112,7 @@ export const createOrUpdateUser = mutation({
           totalMoneySaved: 0,
           totalMoneyLost: 0,
         })
-        console.log(`Created new user: ${userId}`)
+        console.log(`Created new user: ${userId} with username: ${username}`)
         return userId
       }
     } catch (error) {
@@ -279,32 +331,124 @@ export const deleteUserAccount = mutation({
   },
 })
 
-// Update user display name only
-export const updateUserName = mutation({
-  args: {
-    userId: v.id("users"),
-    name: v.string(),
+// Check if username is available
+export const checkUsernameAvailability = query({
+  args: { 
+    username: v.string(),
+    currentUserId: v.optional(v.id("users"))
   },
   handler: async (ctx, args) => {
-    if (!args.name || args.name.trim().length === 0) {
-      throw new Error("Name is required")
+    // Early return if username is empty or invalid
+    if (!args.username || typeof args.username !== 'string' || args.username.trim().length === 0) {
+      return { available: false, error: "Username is required" }
     }
-    
+
+    // Validate username format
+    const usernameRegex = /^[a-z0-9_]+$/
+    const cleanUsername = args.username.trim().toLowerCase()
+    if (!usernameRegex.test(cleanUsername)) {
+      return { available: false, error: "Username can only contain lowercase letters, numbers, and underscores" }
+    }
+
+    if (cleanUsername.length < 3) {
+      return { available: false, error: "Username must be at least 3 characters long" }
+    }
+
+    if (cleanUsername.length > 20) {
+      return { available: false, error: "Username must be 20 characters or less" }
+    }
+
     try {
-      // Get current user to verify it exists
-      const currentUser = await ctx.db.get(args.userId)
-      
-      if (!currentUser) {
-        throw new Error("User not found")
+      const existingUser = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", cleanUsername))
+        .unique()
+
+      // If it's the user's own username, it's available
+      if (existingUser && args.currentUserId && existingUser._id === args.currentUserId) {
+        return { available: true }
       }
-      
-      await ctx.db.patch(args.userId, { name: args.name.trim() })
-      console.log(`Updated user name for user: ${args.userId} from "${currentUser.name}" to "${args.name.trim()}"`)
-      
-      return { success: true }
+
+      return { available: !existingUser }
     } catch (error) {
-      console.error("Error updating user name:", error)
-      throw new Error("Failed to update user name")
+      console.error("Error checking username availability:", error)
+      return { available: false, error: "Failed to check username availability" }
+    }
+  },
+})
+
+// Update username
+export const updateUsername = mutation({
+  args: {
+    userId: v.id("users"),
+    username: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!args.username || args.username.trim().length === 0) {
+      throw new Error("Username is required")
+    }
+
+    const cleanUsername = args.username.trim().toLowerCase()
+
+    // Validate username format
+    const usernameRegex = /^[a-z0-9_]+$/
+    if (!usernameRegex.test(cleanUsername)) {
+      throw new Error("Username can only contain lowercase letters, numbers, and underscores")
+    }
+
+    if (cleanUsername.length < 3) {
+      throw new Error("Username must be at least 3 characters long")
+    }
+
+    if (cleanUsername.length > 20) {
+      throw new Error("Username must be 20 characters or less")
+    }
+
+    try {
+      // Check if username is already taken by another user
+      const existingUser = await ctx.db
+        .query("users")
+        .withIndex("by_username", (q) => q.eq("username", cleanUsername))
+        .unique()
+
+      if (existingUser && existingUser._id !== args.userId) {
+        throw new Error("Username is already taken")
+      }
+
+      // Update the username
+      await ctx.db.patch(args.userId, { username: cleanUsername })
+      console.log(`Updated username for user: ${args.userId} to: ${cleanUsername}`)
+      return true
+    } catch (error) {
+      console.error("Error updating username:", error)
+      throw error
+    }
+  },
+})
+
+// Migration: Add usernames to existing users
+export const migrateExistingUsersToUsernames = mutation({
+  handler: async (ctx) => {
+    try {
+      // Get all users without usernames
+      const usersWithoutUsernames = await ctx.db
+        .query("users")
+        .filter((q) => q.eq(q.field("username"), undefined))
+        .collect()
+
+      console.log(`Found ${usersWithoutUsernames.length} users without usernames`)
+
+      // Generate usernames for each user
+      for (const user of usersWithoutUsernames) {
+        const username = await generateUniqueUsername(ctx, user.name)
+        await ctx.db.patch(user._id, { username })
+        console.log(`Added username "${username}" to user ${user._id}`)
+      }
+
+      return { success: true, usersUpdated: usersWithoutUsernames.length }
+    } catch (error) {
+      console.error("Error migrating users to usernames:", error)
+      throw new Error("Failed to migrate users to usernames")
     }
   },
 })

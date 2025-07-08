@@ -17,6 +17,8 @@ import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { api as convexApi } from "@/convex/_generated/api"
 import { formatDistanceToNow, isToday, differenceInDays } from "date-fns"
+import { useDebounce } from "@/lib/hooks/use-debounce"
+import { CalendarGraph } from "@/components/calendar-graph"
 
 export default function DashboardPage() {
   return (
@@ -40,12 +42,17 @@ function DashboardContent() {
   const { convexUser } = useAuth()
   const searchParams = useSearchParams()
   const hasProcessedSuccess = useRef(false)
-  const updateUserName = useMutation(convexApi.users.updateUserName)
-  const [displayName, setDisplayName] = useState("")
+  const updateUsername = useMutation(convexApi.users.updateUsername)
+  const [username, setUsername] = useState("")
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [localDisplayName, setLocalDisplayName] = useState("")
+  const [localUsername, setLocalUsername] = useState("")
+  const [usernameError, setUsernameError] = useState("")
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
   
+  // Debounce username checking
+  const debouncedUsername = useDebounce(localUsername, 500)
+
   // Handle success redirect from Stripe Checkout
   useEffect(() => {
     const success = searchParams.get('success')
@@ -62,7 +69,10 @@ function DashboardContent() {
       // Get the pending goal data from sessionStorage
       const pendingGoalData = sessionStorage.getItem('pendingGoal')
       if (!pendingGoalData) {
-        toast.error('No pending goal found')
+        // This might happen if user refreshes the page or sessionStorage was cleared
+        console.warn('No pending goal data found in sessionStorage')
+        // Don't show an error toast as this is not necessarily an error condition
+        // The goal might have already been processed or the user just landed on the dashboard
         return
       }
 
@@ -87,7 +97,7 @@ function DashboardContent() {
       // Clear the pending goal data
       sessionStorage.removeItem('pendingGoal')
 
-      toast.success('Goal created successfully! Your payment method has been set up.')
+      toast.success('Goal created successfully! Your payment method has been set up and your goal is now live.')
       
       // Remove the success parameters from the URL
       const url = new URL(window.location.href)
@@ -97,7 +107,7 @@ function DashboardContent() {
       
     } catch (error) {
       console.error('Error completing goal creation:', error)
-      toast.error('Failed to complete goal creation. Please try again.')
+      toast.error('Failed to complete goal creation. Please check your goals list or try creating a new goal.')
     }
   }
   
@@ -107,27 +117,74 @@ function DashboardContent() {
     convexUser?._id ? { userId: convexUser._id } : "skip"
   )
 
+  // Fetch goal completion data for calendar graph
+  const completionData = useQuery(
+    api.goals.getGoalCompletionData,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  )
+
   useEffect(() => {
-    if (convexUser?.name) {
-      setDisplayName(convexUser.name)
+    if (convexUser?.username) {
+      setUsername(convexUser.username)
       if (!editing) {
-        setLocalDisplayName(convexUser.name)
+        setLocalUsername(convexUser.username)
       }
     }
-  }, [convexUser?.name, editing])
+  }, [convexUser?.username, editing])
 
-  const handleDisplayNameSave = async (e: React.FormEvent) => {
+  // Check username availability when debounced value changes
+  useEffect(() => {
+    if (debouncedUsername && 
+        debouncedUsername.trim().length > 0 && 
+        debouncedUsername !== convexUser?.username) {
+      setIsCheckingUsername(true)
+      setUsernameError("")
+    } else {
+      setIsCheckingUsername(false)
+      setUsernameError("")
+    }
+  }, [debouncedUsername, convexUser?.username])
+
+  // Get username availability result
+  const usernameAvailability = useQuery(
+    convexApi.users.checkUsernameAvailability,
+    debouncedUsername && 
+    debouncedUsername !== convexUser?.username && 
+    debouncedUsername.trim().length > 0 &&
+    debouncedUsername.trim().length >= 3
+      ? { 
+          username: debouncedUsername.trim(), 
+          currentUserId: convexUser?._id 
+        }
+      : "skip"
+  )
+
+  // Update error state based on availability check
+  useEffect(() => {
+    if (usernameAvailability && debouncedUsername) {
+      setIsCheckingUsername(false)
+      if (!usernameAvailability.available) {
+        setUsernameError(usernameAvailability.error || "Username is not available")
+      } else {
+        setUsernameError("")
+      }
+    }
+  }, [usernameAvailability, debouncedUsername])
+
+  const handleUsernameSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!convexUser?._id || !localDisplayName.trim()) return
+    if (!convexUser?._id || !localUsername.trim() || usernameError) return
     
     setSaving(true)
     try {
-      await updateUserName({ userId: convexUser._id, name: localDisplayName.trim() })
+      await updateUsername({ userId: convexUser._id, username: localUsername.trim() })
       setEditing(false)
-      setDisplayName(localDisplayName.trim())
-      toast.success("Display name updated!")
+      setUsername(localUsername.trim())
+      setUsernameError("")
+      toast.success("Username updated!")
     } catch (err) {
-      toast.error("Failed to update display name")
+      const errorMessage = err instanceof Error ? err.message : "Failed to update username"
+      toast.error(errorMessage)
     } finally {
       setSaving(false)
     }
@@ -143,26 +200,47 @@ function DashboardContent() {
       {/* Profile section at the top */}
       <div className="mb-3">
         <div className="flex flex-col gap-1 w-full max-w-xs">
-          <label htmlFor="displayName" className="text-sm font-medium">Display Name</label>
+          <label htmlFor="username" className="text-sm font-medium">Username</label>
           {editing ? (
-            <form onSubmit={handleDisplayNameSave} className="flex gap-1">
+            <form onSubmit={handleUsernameSave} className="flex gap-1">
               <input
-                id="displayName"
-                className="bg-[#f3f5f7] border border-[#bfc3c7] rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 transition flex-1"
-                value={localDisplayName}
-                onChange={e => setLocalDisplayName(e.target.value)}
+                id="username"
+                className={`bg-[#f3f5f7] border rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 transition flex-1 ${
+                  usernameError 
+                    ? "border-red-300 focus:ring-red-200" 
+                    : debouncedUsername && !usernameError && debouncedUsername !== convexUser?.username
+                    ? "border-green-300 focus:ring-green-200"
+                    : "border-[#bfc3c7] focus:ring-blue-200"
+                }`}
+                value={localUsername}
+                onChange={e => setLocalUsername(e.target.value)}
                 disabled={saving}
-                maxLength={32}
+                maxLength={20}
                 required
-                placeholder="Display name..."
+                placeholder="username..."
                 style={{ boxShadow: '0 1px 2px 0 #bfc3c7' }}
                 autoFocus
               />
+              {isCheckingUsername && (
+                <div className="flex items-center text-xs text-muted-foreground ml-2">
+                  <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                  Checking...
+                </div>
+              )}
+              {debouncedUsername && debouncedUsername.trim().length < 3 && (
+                <div className="text-xs text-muted-foreground mt-1">Username must be at least 3 characters</div>
+              )}
+              {usernameError && (
+                <div className="text-xs text-red-600 mt-1">{usernameError}</div>
+              )}
+              {debouncedUsername && !usernameError && debouncedUsername !== convexUser?.username && (
+                <div className="text-xs text-green-600 mt-1">Username available!</div>
+              )}
               <Button
                 type="submit"
                 size="sm"
                 className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
-                disabled={saving}
+                disabled={saving || !!usernameError || isCheckingUsername}
               >
                 {saving ? "Saving..." : "Save"}
               </Button>
@@ -172,7 +250,7 @@ function DashboardContent() {
                 className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
                 onClick={() => {
                   setEditing(false)
-                  setLocalDisplayName("")
+                  setLocalUsername("")
                 }}
                 disabled={saving}
               >
@@ -182,14 +260,14 @@ function DashboardContent() {
           ) : (
             <div className="flex items-center gap-2">
               <span className="bg-[#f3f5f7] border border-[#bfc3c7] rounded px-2 py-1 text-sm flex-1">
-                {convexUser?.name || "No display name set"}
+                {convexUser?.username || "Generating username..."}
               </span>
               <Button
                 size="sm"
                 className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
                 onClick={() => {
                   setEditing(true)
-                  setLocalDisplayName(convexUser?.name || "")
+                  setLocalUsername(convexUser?.username || "")
                 }}
               >
                 Edit
@@ -198,6 +276,9 @@ function DashboardContent() {
           )}
         </div>
       </div>
+
+      {/* Calendar Graph */}
+      {/* CalendarGraph component removed as requested */}
 
       {/* Goals section */}
       <div>
@@ -274,7 +355,7 @@ function GoalsContent({ goals, isLoading }: { goals: any[], isLoading: boolean }
                     : `$${goal.pledgeAmount} lost • expired ${formatDistanceToNow(new Date(goal.deadline), { addSuffix: true })}`
                   }
                 </span>
-                <span>by {goal.user?.name || "Unknown"}</span>
+                <span>by {goal.user?.username || goal.user?.name || "Unknown"}</span>
                 <span>{isCompleted ? "Completed" : isExpired ? "Expired" : "Active"}</span>
                 {!goal.completed && goal.deadline > Date.now() && (
                   <Button

@@ -7,6 +7,7 @@ export default defineSchema({
     clerkId: v.string(),
     email: v.string(),
     name: v.string(),
+    username: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     // Stripe customer ID for payments
     stripeCustomerId: v.optional(v.string()),
@@ -21,7 +22,8 @@ export default defineSchema({
     totalMoneyLost: v.optional(v.number()),
   })
     .index("by_clerk_id", ["clerkId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_username", ["username"]),
 
   goals: defineTable({
     // Goal details
@@ -41,6 +43,7 @@ export default defineSchema({
     paymentMethodId: v.optional(v.string()),
     paymentProcessed: v.boolean(),
     paymentProcessedAt: v.optional(v.number()),
+    paymentSetupComplete: v.optional(v.boolean()),
 
     // User reference
     userId: v.id("users"),

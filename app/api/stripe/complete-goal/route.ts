@@ -28,8 +28,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the goal in Convex
+    // Remove goalId from goalData as it's not expected by the createGoal mutation
+    const { goalId: _, ...goalDataWithoutId } = goalData
     const goalId = await convex.mutation(api.goals.createGoal, {
-      ...goalData,
+      ...goalDataWithoutId,
       stripeSessionId: sessionId,
     })
 

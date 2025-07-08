@@ -70,7 +70,7 @@ export function GoalFeed() {
                     completed: goal.completed,
                     paymentProcessed: goal.paymentProcessed || false,
                     userId: goal.userId,
-                    displayName: goal.user?.name || "Unknown",
+                    displayName: goal.user?.username || goal.user?.name || "Unknown",
                     userImage: goal.user?.image,
                     creationTime: goal._creationTime
                   }}
