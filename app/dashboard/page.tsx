@@ -19,19 +19,21 @@ import { api as convexApi } from "@/convex/_generated/api"
 import { formatDistanceToNow, isToday, differenceInDays } from "date-fns"
 import { useDebounce } from "@/lib/hooks/use-debounce"
 import { CalendarGraph } from "@/components/calendar-graph"
+import { Footer } from "@/components/footer"
 
 export default function DashboardPage() {
   return (
     <SignedIn>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Header />
-        <div className="w-full max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-3">
+        <div className="w-full max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-3 flex-1">
           <div className="mb-4">
             <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Dashboard</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Manage your goals and account</p>
           </div>
           <DashboardContent />
         </div>
+        <Footer />
       </div>
     </SignedIn>
   )

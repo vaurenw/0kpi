@@ -10,13 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, Target, CheckCircle, XCircle, Clock } from "lucide-react"
 import Link from "next/link"
+import { Footer } from "@/components/footer"
 
 export default function MyGoalsPage() {
   return (
     <SignedIn>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Header />
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-xl font-semibold text-foreground">My Goals</h1>
@@ -32,6 +33,7 @@ export default function MyGoalsPage() {
           
           <MyGoalsContent />
         </div>
+        <Footer />
       </div>
     </SignedIn>
   )

@@ -5,13 +5,14 @@ import { Header } from "@/components/header"
 import { useUser } from "@clerk/nextjs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Footer } from "@/components/footer"
 
 export default function ProfilePage() {
   return (
     <SignedIn>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Header />
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-foreground">Profile</h1>
             <p className="text-sm text-muted-foreground">Manage your account and preferences</p>
@@ -19,6 +20,7 @@ export default function ProfilePage() {
           
           <ProfileContent />
         </div>
+        <Footer />
       </div>
     </SignedIn>
   )

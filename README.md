@@ -1,52 +1,74 @@
-# 0kpi – Open Source Goal Tracking with Stripe Payments
+# 0kpi
 
-## Overview
-
-**0kpi** is an open source goal-tracking application that helps users set, track, and complete personal goals. It features accountability, pledges, and automated payments using Stripe. If a user fails to complete a goal, the pledged amount is charged.
+A goal-tracking app with financial accountability. Set goals, make pledges, and get charged if you don't complete them.
 
 ## Features
 
-- ✅ Create and manage personal goals
-- ✅ Set deadlines and pledge amounts
-- ✅ Stripe integration for secure payments
-- ✅ Automatic payment capture on failed goals
-- ✅ User-friendly dashboard
-- ✅ Modular, scalable, and easy to extend
-- ✅ Built with Next.js, Convex, TypeScript, and Tailwind CSS
+- Create and track personal goals
+- Set pledge amounts ($0.01 - $10,000)
+- Automatic payment capture on failed goals
+- Real-time goal feed
+- User authentication with Clerk
+- Stripe payment processing
 
-## Getting Started
+## Tech Stack
 
-### 1. Clone the Repository
-```sh
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: Convex 
+- **Auth**: Clerk
+- **Payments**: Stripe
+- **UI**: Shadcn/ui components
+
+## Quick Start
+
+```bash
+# Clone and install
 git clone https://github.com/vaurenw/0kpi.git
 cd 0kpi
-```
-
-### 2. Install Dependencies
-```sh
 npm install
-# or
-yarn install
-# or
-pnpm install
-```
 
-### 3. Configure Environment Variables
-- Copy `example.env` to `.env.local`:
-  ```sh
-  cp example.env .env.local
-  ```
-- Fill in all required values (see comments in `example.env`).
-- **Never commit your real `.env` or `.env.local` files!**
+# Set up environment
+cp example.env .env.local
+# Fill in your API keys
 
-### 4. Run the Development Server
-```sh
+# Run development server
 npm run dev
+
+# Deploy to production
+npm run build
+npm start
 ```
-Visit [http://localhost:3000](http://localhost:3000) to view the app.
+
+## Environment Variables
+
+Copy `example.env` to `.env.local` and add your API keys:
+
+- `NEXT_PUBLIC_CONVEX_URL` - Convex deployment URL
+- `STRIPE_SECRET_KEY` - Stripe secret key
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
+- `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret
+- `STRIPE_GOAL_PLEDGE_PRODUCT_ID` - Stripe product ID
+- `NEXT_PUBLIC_APP_URL` - Your app URL
+- `INTERNAL_API_KEY` - Internal API key
+- `CRON_SECRET` - Cron job secret
+
+## Convex Commands
+
+```bash
+# Start Convex dev server
+npx convex dev
+
+# Deploy to production
+npx convex deploy
+
 
 ## Docs
-- **[Stripe Documentation](https://stripe.com/docs)** - Payment processing, webhooks, and API reference
-- **[Convex Documentation](https://docs.convex.dev/)** - Database, functions, and real-time features
-- **[Clerk Documentation](https://clerk.com/docs)** - Authentication and user management
+
+- [Stripe Documentation](https://stripe.com/docs)
+- [Convex Documentation](https://docs.convex.dev/)
+- [Clerk Documentation](https://clerk.com/docs)
+
+## License
+
+MIT
 

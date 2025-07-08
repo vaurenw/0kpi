@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import Link from "next/link"
 import { SignedIn, SignedOut } from "@clerk/nextjs"
+import { Footer } from "./footer"
 
 export function GoalFeed() {
   const [limit] = useState(20)
@@ -37,10 +38,10 @@ export function GoalFeed() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
 
-      <main className="w-full max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-3 flex flex-col items-center">
+      <main className="w-full max-w-2xl mx-auto px-2 sm:px-4 lg:px-8 py-3 flex flex-col items-center flex-1">
         {/* No heading, compact feed style */}
 
         {isLoading ? (
@@ -103,6 +104,8 @@ export function GoalFeed() {
           </ol>
         )}
       </main>
+      
+      <Footer />
     </div>
   )
 }
