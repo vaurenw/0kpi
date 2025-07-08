@@ -60,7 +60,7 @@ npx convex dev
 
 # Deploy to production
 npx convex deploy
-
+```
 
 ## Docs
 
