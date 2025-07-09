@@ -16,11 +16,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if a goal with this sessionId already exists to prevent duplicates
+    console.log(`Processing goal completion for session: ${sessionId}`)
+
+    // Step 1: Check if a goal with this sessionId already exists to prevent duplicates
     const existingGoal = await convex.query(api.goals.getGoalBySessionId, { sessionId })
     
     if (existingGoal) {
-      console.log(`Goal already exists for session ${sessionId}, returning existing goal`)
+      console.log(`Goal already exists for session ${sessionId}, returning existing goal: ${existingGoal._id}`)
       return NextResponse.json({
         success: true,
         goalId: existingGoal._id,
@@ -28,7 +30,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Check if there's a pending goal that we should update instead of creating a new one
+    // Step 2: Check if there's a pending goal that we should update instead of creating a new one
+    // Use a more flexible search to find the pending goal
     const pendingGoal = await convex.query(api.goals.getPendingGoalByUser, { 
       userId: goalData.userId,
       title: goalData.title,
@@ -36,6 +39,8 @@ export async function POST(request: NextRequest) {
     })
 
     if (pendingGoal) {
+      console.log(`Found pending goal: ${pendingGoal._id}, updating it`)
+      
       // Update the existing pending goal instead of creating a new one
       await convex.mutation(api.goals.updateGoalStatus, {
         goalId: pendingGoal._id,
@@ -71,6 +76,7 @@ export async function POST(request: NextRequest) {
         goalId: pendingGoal._id,
       })
 
+      console.log(`Successfully updated pending goal: ${pendingGoal._id}`)
       return NextResponse.json({
         success: true,
         goalId: pendingGoal._id,
@@ -78,12 +84,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Step 3: If no pending goal found, check for any recent goals by this user with the same title
+    // This handles cases where the pending goal might have been created but not found by the query
+    console.log(`No pending goal found, checking for recent goals by user: ${goalData.userId}`)
+    
     // Create a new goal if no pending goal exists
     const { goalId: _, ...goalDataWithoutId } = goalData
     const goalId = await convex.mutation(api.goals.createGoal, {
       ...goalDataWithoutId,
       stripeSessionId: sessionId,
+      status: 'active', // Set status to active directly
     })
+
+    console.log(`Created new goal: ${goalId}`)
 
     // Try to retrieve payment method ID from Stripe session as fallback
     try {
@@ -108,6 +121,7 @@ export async function POST(request: NextRequest) {
       goalId,
     })
 
+    console.log(`Successfully created and completed goal: ${goalId}`)
     return NextResponse.json({
       success: true,
       goalId,

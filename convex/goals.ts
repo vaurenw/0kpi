@@ -504,7 +504,8 @@ export const savePaymentMethodId = mutation({
     try {
       await ctx.db.patch(args.goalId, {
         paymentMethodId: args.paymentMethodId,
-        status: "active",
+        // Remove automatic status change to prevent race conditions
+        // Status should be managed by the calling code
       })
       console.log(`Payment method ID saved for goal: ${args.goalId}`)
     } catch (error) {
@@ -528,6 +529,120 @@ export const getGoalBySessionId = query({
     } catch (error) {
       console.error("Error fetching goal by session ID:", error)
       return null
+    }
+  },
+})
+
+// Get duplicate goals for a user (for debugging and cleanup)
+export const getDuplicateGoals = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const userGoals = await ctx.db
+        .query("goals")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect()
+      
+      // Group goals by title and deadline to find duplicates
+      const goalGroups = new Map<string, any[]>()
+      
+      userGoals.forEach(goal => {
+        const key = `${goal.title.trim()}-${goal.deadline}`
+        if (!goalGroups.has(key)) {
+          goalGroups.set(key, [])
+        }
+        goalGroups.get(key)!.push(goal)
+      })
+      
+      // Return only groups with more than one goal
+      const duplicates = Array.from(goalGroups.entries())
+        .filter(([_, goals]) => goals.length > 1)
+        .map(([key, goals]) => ({
+          key,
+          goals: goals.sort((a, b) => a._creationTime - b._creationTime) // Sort by creation time
+        }))
+      
+      return duplicates
+    } catch (error) {
+      console.error("Error fetching duplicate goals:", error)
+      return []
+    }
+  },
+})
+
+// Clean up duplicate goals for a user
+export const cleanupDuplicateGoals = mutation({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const userGoals = await ctx.db
+        .query("goals")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect()
+      
+      // Group goals by title and deadline to find duplicates
+      const goalGroups = new Map<string, any[]>()
+      
+      userGoals.forEach(goal => {
+        const key = `${goal.title.trim()}-${goal.deadline}`
+        if (!goalGroups.has(key)) {
+          goalGroups.set(key, [])
+        }
+        goalGroups.get(key)!.push(goal)
+      })
+      
+      let deletedCount = 0
+      
+      // Process each group of duplicates
+      for (const [key, goals] of goalGroups.entries()) {
+        if (goals.length > 1) {
+          // Sort by creation time and completeness
+          const sortedGoals = goals.sort((a, b) => {
+            // Prefer goals with stripeSessionId
+            const aHasSession = a.stripeSessionId ? 1 : 0
+            const bHasSession = b.stripeSessionId ? 1 : 0
+            if (aHasSession !== bHasSession) {
+              return bHasSession - aHasSession
+            }
+            
+            // Prefer active status over pending
+            const aStatus = a.status === 'active' ? 1 : 0
+            const bStatus = b.status === 'active' ? 1 : 0
+            if (aStatus !== bStatus) {
+              return bStatus - aStatus
+            }
+            
+            // Prefer goals with paymentSetupComplete
+            const aComplete = a.paymentSetupComplete ? 1 : 0
+            const bComplete = b.paymentSetupComplete ? 1 : 0
+            if (aComplete !== bComplete) {
+              return bComplete - aComplete
+            }
+            
+            // Finally, prefer newer goals
+            return b._creationTime - a._creationTime
+          })
+          
+          // Keep the first (best) goal, delete the rest
+          const [keepGoal, ...deleteGoals] = sortedGoals
+          
+          for (const deleteGoal of deleteGoals) {
+            await ctx.db.delete(deleteGoal._id)
+            deletedCount++
+            console.log(`Deleted duplicate goal: ${deleteGoal._id}`)
+          }
+        }
+      }
+      
+      console.log(`Cleaned up ${deletedCount} duplicate goals for user ${args.userId}`)
+      return deletedCount
+    } catch (error) {
+      console.error("Error cleaning up duplicate goals:", error)
+      throw new Error("Failed to clean up duplicate goals")
     }
   },
 })
@@ -767,7 +882,8 @@ export const getPendingGoalByUser = query({
   },
   handler: async (ctx, args) => {
     try {
-      const goal = await ctx.db
+      // First try to find a pending goal with exact match
+      let goal = await ctx.db
         .query("goals")
         .withIndex("by_user", (q) => q.eq("userId", args.userId))
         .filter((q) =>
@@ -778,6 +894,21 @@ export const getPendingGoalByUser = query({
           )
         )
         .unique()
+      
+      // If not found, try to find any goal by this user with the same title and deadline
+      // (in case the status was already changed)
+      if (!goal) {
+        goal = await ctx.db
+          .query("goals")
+          .withIndex("by_user", (q) => q.eq("userId", args.userId))
+          .filter((q) =>
+            q.and(
+              q.eq(q.field("title"), args.title.trim()),
+              q.eq(q.field("deadline"), args.deadline)
+            )
+          )
+          .unique()
+      }
       
       return goal
     } catch (error) {

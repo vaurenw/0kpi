@@ -112,6 +112,31 @@ function DashboardContent() {
       toast.error('Failed to complete goal creation. Please check your goals list or try creating a new goal.')
     }
   }
+
+  // Debug function to clean up duplicate goals (only in development)
+  const cleanupDuplicates = async () => {
+    if (!convexUser?._id) return
+    
+    try {
+      const response = await fetch('/api/debug/duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: convexUser._id }),
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(`Cleaned up ${result.deletedCount} duplicate goals`)
+        // Refresh the page to show updated goals
+        window.location.reload()
+      } else {
+        toast.error('Failed to clean up duplicates')
+      }
+    } catch (error) {
+      console.error('Error cleaning up duplicates:', error)
+      toast.error('Failed to clean up duplicates')
+    }
+  }
   
   // Fetch user's goals from Convex
   const userGoals = useQuery(
@@ -278,6 +303,20 @@ function DashboardContent() {
           )}
         </div>
       </div>
+
+      {/* Debug section - only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={cleanupDuplicates}
+            className="text-xs"
+          >
+            Clean Up Duplicates
+          </Button>
+        </div>
+      )}
 
       {/* Calendar Graph */}
       {/* CalendarGraph component removed as requested */}
