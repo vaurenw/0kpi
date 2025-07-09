@@ -108,8 +108,8 @@ export function CreateGoalForm() {
         toast.error("Please enter a goal title")
       } else if (deadlineDate.length === 0 || deadlineTime.length === 0) {
         toast.error("Please select a deadline date and time")
-      } else if (pledgeAmount.length === 0 || isNaN(Number.parseFloat(pledgeAmount)) || Number.parseFloat(pledgeAmount) <= 0) {
-        toast.error("Please enter a valid pledge amount (minimum $0.01)")
+      } else if (pledgeAmount.length === 0 || isNaN(Number.parseFloat(pledgeAmount)) || Number.parseFloat(pledgeAmount) < 0.5) {
+        toast.error("Please enter a valid pledge amount (minimum $0.50)")
       } else {
         toast.error("Please fill in all fields correctly")
       }
@@ -141,8 +141,8 @@ export function CreateGoalForm() {
 
       // Validate pledge amount
       const amount = Number.parseFloat(pledgeAmount)
-      if (isNaN(amount) || amount <= 0) {
-        toast.error("Please enter a pledge amount greater than $0.01")
+      if (isNaN(amount) || amount < 0.5) {
+        toast.error("Please enter a pledge amount of at least $0.50")
         setIsSubmitting(false)
         return
       }
@@ -253,7 +253,7 @@ export function CreateGoalForm() {
               id="pledgeAmount"
               type="number"
               step="0.01"
-              min="0.01"
+              min="0.50"
               max="10000"
               value={pledgeAmount}
               onChange={(e) => setPledgeAmount(e.target.value)}
@@ -264,7 +264,7 @@ export function CreateGoalForm() {
             <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            This amount will be charged if you don't complete your goal by the deadline. You can set any amount from $0.01 to $10,000.
+            This amount will be charged if you don't complete your goal by the deadline. You can set any amount from $0.50 to $10,000.
           </p>
         </div>
       </div>

@@ -10,8 +10,8 @@ export async function POST(request: NextRequest) {
     const { amount, goalId, userId } = await request.json()
 
     // Validate and sanitize input
-    if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 10000) {
-      return NextResponse.json({ error: 'Invalid amount (must be between $0.01 and $10,000)' }, { status: 400 })
+    if (!amount || typeof amount !== 'number' || amount < 0.5 || amount > 10000) {
+      return NextResponse.json({ error: 'Invalid amount (must be between $0.50 and $10,000)' }, { status: 400 })
     }
     if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
       return NextResponse.json({ error: 'Valid user ID is required' }, { status: 400 })

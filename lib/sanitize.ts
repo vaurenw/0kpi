@@ -39,8 +39,8 @@ export function validateAmount(amount: number): number {
   if (typeof amount !== 'number' || isNaN(amount)) {
     throw new Error('Amount must be a valid number')
   }
-  if (amount < 0.01) {
-    throw new Error('Amount must be at least $0.01')
+  if (amount < 0.5) {
+    throw new Error('Amount must be at least $0.50')
   }
   if (amount > 10000) {
     throw new Error('Amount cannot exceed $10,000')

@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 10000) {
+    if (!amount || typeof amount !== 'number' || amount < 0.5 || amount > 10000) {
       return NextResponse.json(
-        { error: 'Valid amount is required (between $0.01 and $10,000)' },
+        { error: 'Valid amount is required (between $0.50 and $10,000)' },
         { status: 400 }
       )
     }

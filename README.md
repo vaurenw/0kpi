@@ -5,7 +5,7 @@ A goal-tracking app with financial accountability. Set goals, make pledges, and 
 ## Features
 
 - Create and track personal goals
-- Set pledge amounts ($0.01 - $10,000)
+- Set pledge amounts ($0.50 - $10,000)
 - Automatic payment capture on failed goals
 - Real-time goal feed
 - User authentication with Clerk

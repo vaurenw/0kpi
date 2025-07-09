@@ -27,8 +27,8 @@ export const createGoal = mutation({
       args.description = undefined;
     }
 
-    if (args.pledgeAmount <= 0) {
-      throw new Error("Pledge amount must be greater than 0")
+    if (args.pledgeAmount < 0.5) {
+      throw new Error("Pledge amount must be at least $0.50")
     }
 
     // Allow same-day goals (deadline can be today)
