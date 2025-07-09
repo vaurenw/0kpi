@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { api } from '@/convex/_generated/api'
 import { ConvexHttpClient } from 'convex/browser'
+import { Id } from '@/convex/_generated/dataModel'
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    
-    if (!userId) {
+    const userIdParam = searchParams.get('userId')
+    if (!userIdParam) {
       return NextResponse.json(
         { error: 'userId parameter is required' },
         { status: 400 }
       )
     }
-
+    const userId = userIdParam as Id<'users'>
     const duplicates = await convex.query(api.goals.getDuplicateGoals, { userId })
-    
     return NextResponse.json({
       success: true,
       duplicates,
@@ -34,17 +33,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json()
-    
-    if (!userId) {
+    const { userId: userIdRaw } = await request.json()
+    if (!userIdRaw) {
       return NextResponse.json(
         { error: 'userId is required' },
         { status: 400 }
       )
     }
-
+    const userId = userIdRaw as Id<'users'>
     const deletedCount = await convex.mutation(api.goals.cleanupDuplicateGoals, { userId })
-    
     return NextResponse.json({
       success: true,
       deletedCount,
