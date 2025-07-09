@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { api } from '@/convex/_generated/api'
 import { ConvexHttpClient } from 'convex/browser'
+import { Id } from '@/convex/_generated/dataModel'
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export async function POST(request: NextRequest) {
   try {
-    const { amount, goalId, userId } = await request.json()
+    const { amount, goalId, userId: userIdRaw } = await request.json()
+    const userId = userIdRaw as Id<'users'>
 
     // Validate and sanitize input
     if (!amount || typeof amount !== 'number' || amount < 0.5 || amount > 10000) {
