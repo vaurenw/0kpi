@@ -24,7 +24,7 @@ export const processExpiredGoalsAction = internalAction({
           if (goal.paymentMethodId) {
             try {
               // Get user to get their Stripe customer ID
-              const user = await ctx.runQuery(internal.users.getUserById, { userId: goal.userId });
+              const user = await ctx.runQuery(internal.users.getUserByIdInternal, { userId: goal.userId });
               if (!user || !user.stripeCustomerId) {
                 console.error(`No Stripe customer ID found for user ${goal.userId}`);
                 continue;

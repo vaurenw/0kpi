@@ -1,5 +1,5 @@
 import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
+import { mutation, query, internalQuery } from "./_generated/server"
 
 // Generate a unique username from a name
 async function generateUniqueUsername(ctx: any, baseName: string): Promise<string> {
@@ -151,6 +151,19 @@ export const getUserById = query({
     } catch (error) {
       console.error("Error fetching user by ID:", error)
       throw new Error("Failed to fetch user")
+    }
+  },
+})
+
+// Internal: Get user by ID
+export const getUserByIdInternal = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    try {
+      return await ctx.db.get(args.userId)
+    } catch (error) {
+      console.error("Error fetching user by ID (internal):", error)
+      throw new Error("Failed to fetch user (internal)")
     }
   },
 })
