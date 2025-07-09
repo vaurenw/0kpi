@@ -72,7 +72,7 @@ export function GoalFeed() {
                     paymentProcessed: goal.paymentProcessed || false,
                     userId: goal.userId,
                     displayName: goal.user?.username || goal.user?.name || "Unknown",
-                    userImage: goal.user?.image,
+                    userImage: goal.user?.imageUrl,
                     creationTime: goal._creationTime
                   }}
                   index={idx}
