@@ -400,7 +400,7 @@ function GoalsContent({ goals, isLoading }: { goals: any[], isLoading: boolean }
                 <span>{isCompleted ? "Completed" : isExpired ? "Expired" : "Active"}</span>
                 {!goal.completed && goal.deadline > Date.now() && (
                   <Button
-                    size="xs"
+                    size="sm"
                     className="bg-white border border-gray-300 text-black rounded px-3 py-1 shadow-none font-normal hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 ml-2 h-6 text-xs"
                     disabled={completingGoalId === goal._id}
                     onClick={async () => {
