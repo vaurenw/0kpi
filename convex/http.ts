@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
 import { api, internal } from "./_generated/api"
+import Stripe from "stripe";
 
 const http = httpRouter()
 
@@ -101,7 +102,7 @@ http.route({
     }
 
     try {
-      const result = await ctx.runMutation(internal.cron.processExpiredGoals, {})
+      const result = await ctx.runAction(internal.crons.processExpiredGoalsActionTrigger, {})
       console.log(`Processed ${result.processedCount} expired goals`)
 
       return new Response(JSON.stringify(result), {

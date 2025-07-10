@@ -134,6 +134,8 @@ export const updateCategory = mutation({
   handler: async (ctx, args) => {
     const { categoryId, ...updates } = args
 
+    if (!updates.name) throw new Error("Category name is required");
+
     try {
       const category = await ctx.db.get(categoryId)
       if (!category) {
@@ -144,7 +146,7 @@ export const updateCategory = mutation({
       if (updates.name && updates.name.trim() !== category.name) {
         const existingCategory = await ctx.db
           .query("categories")
-          .withIndex("by_name", (q) => q.eq("name", updates.name.trim()))
+          .withIndex("by_name", (q) => q.eq("name", updates.name!.trim()))
           .unique()
 
         if (existingCategory) {

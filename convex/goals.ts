@@ -77,12 +77,19 @@ export const createGoal = mutation({
         return existingGoal._id
       }
 
+      // Allowed statuses for a goal
+      const allowedStatuses = ["pending", "active", "completed", "failed", "cancelled"] as const;
+      type Status = typeof allowedStatuses[number];
+      const status: Status = allowedStatuses.includes(args.status as Status)
+        ? (args.status as Status)
+        : "active";
+
       const goalId = await ctx.db.insert("goals", {
         title: args.title.trim(),
         description: typeof args.description === 'string' ? args.description.trim() : undefined,
         deadline: args.deadline,
         pledgeAmount: args.pledgeAmount,
-        status: args.status ?? "active",
+        status: status,
         completed: false,
         paymentIntentId: args.paymentIntentId,
         stripeSessionId: args.stripeSessionId,
@@ -661,19 +668,25 @@ export const updateGoalStatus = mutation({
         throw new Error("Goal not found")
       }
 
+      const allowedStatuses = ["pending", "active", "completed", "failed", "cancelled"] as const;
+      type Status = typeof allowedStatuses[number];
+      const status: Status = allowedStatuses.includes(args.status as Status)
+        ? (args.status as Status)
+        : "active";
+
       await ctx.db.patch(args.goalId, {
-        status: args.status,
+        status: status,
       })
 
       // Create goal update log
       await ctx.db.insert("goalUpdates", {
         goalId: args.goalId,
         userId: goal.userId,
-        type: args.status === "completed" ? "completed" : args.status === "failed" ? "failed" : "updated",
-        message: args.reason || `Goal status updated to ${args.status}`,
+        type: status === "completed" ? "completed" : status === "failed" ? "failed" : "updated",
+        message: args.reason || `Goal status updated to ${status}`,
       })
 
-      console.log(`Goal status updated: ${args.goalId} -> ${args.status}`)
+      console.log(`Goal status updated: ${args.goalId} -> ${status}`)
       return args.goalId
     } catch (error) {
       console.error("Error updating goal status:", error)

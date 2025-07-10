@@ -34,7 +34,10 @@ export default clerkMiddleware((auth, req) => {
   
   // Rate limiting for API routes
   if (req.nextUrl.pathname.startsWith('/api/')) {
-    const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown'
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      req.headers.get('x-real-ip') ||
+      'unknown'
     
     if (!rateLimit(ip, 100, 60000)) { // 100 requests per minute
       return new NextResponse('Too Many Requests', { status: 429 })

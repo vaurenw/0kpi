@@ -105,13 +105,17 @@ export const updatePaymentStatus = mutation({
           paymentProcessedAt: now,
         })
 
+        // Fetch the goal to get its title
+        const goal = await ctx.db.get(payment.goalId);
+        const goalTitle = goal ? goal.title : "your goal";
+
         // Create notification
         await ctx.db.insert("notifications", {
           userId: payment.userId,
           goalId: payment.goalId,
           type: "payment_processed",
           title: "Payment Processed",
-          message: `Payment of $${payment.amount} has been processed for "${payment.goal.title}"`,
+          message: `Payment of $${payment.amount} has been processed for "${goalTitle}"`,
           read: false,
         })
       } else if (args.status === "failed") {

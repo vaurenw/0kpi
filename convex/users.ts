@@ -23,7 +23,7 @@ async function generateUniqueUsername(ctx: any, baseName: string): Promise<strin
   while (true) {
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_username", (q) => q.eq("username", finalUsername))
+      .withIndex("by_username", (q: any) => q.eq("username", finalUsername))
       .unique()
 
     if (!existingUser) {
