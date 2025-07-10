@@ -27,11 +27,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ErrorBoundary>
-          <ClerkProvider>
-            <Providers>
-              {children}
-            </Providers>
-          </ClerkProvider>
+        <ClerkProvider>
+          <Providers>
+            {children}
+          </Providers>
+        </ClerkProvider>
         </ErrorBoundary>
       </body>
     </html>

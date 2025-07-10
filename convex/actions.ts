@@ -37,7 +37,6 @@ export const processExpiredGoalsAction = internalAction({
                 continue;
               }
               
-              console.log('[Convex] INTERNAL_API_KEY:', process.env.INTERNAL_API_KEY?.slice(0, 6))
               // Create a PaymentIntent using the saved payment method
               const response = await fetch(`${appUrl}/api/stripe/charge-payment-method`, {
                 method: 'POST',

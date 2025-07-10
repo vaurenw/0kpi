@@ -40,8 +40,6 @@ export async function POST(request: NextRequest) {
 
     // Verify the request is authorized
     const authHeader = request.headers.get('authorization')
-    console.log('[API] Auth header received:', authHeader)
-    console.log('[API] Expected:', `Bearer ${process.env.INTERNAL_API_KEY?.slice(0, 6)}...`)
     if (authHeader !== `Bearer ${process.env.INTERNAL_API_KEY}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

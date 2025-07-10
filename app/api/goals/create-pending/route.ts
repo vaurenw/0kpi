@@ -6,7 +6,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export async function POST(request: NextRequest) {
   try {
-    const goalData = await request.json()
+  const goalData = await request.json()
     
     console.log('Creating pending goal:', { 
       title: goalData.title, 
@@ -17,14 +17,14 @@ export async function POST(request: NextRequest) {
     // Ensure we only pass the expected fields to createGoal
     const { goalId: _, ...cleanGoalData } = goalData
     
-    const goalId = await convex.mutation(api.goals.createGoal, {
+  const goalId = await convex.mutation(api.goals.createGoal, {
       ...cleanGoalData,
-      status: 'pending',
-    })
+    status: 'pending',
+  })
     
     console.log('Pending goal created:', goalId)
     
-    return NextResponse.json({ goalId })
+  return NextResponse.json({ goalId })
   } catch (error) {
     console.error('Error creating pending goal:', error)
     return NextResponse.json(
