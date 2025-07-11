@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create PaymentIntent' }, { status: 500 })
     }
 
-    return NextResponse.json({ paymentIntent: paymentIntent.client_secret }, { status: 200 })
+    return NextResponse.json({ paymentIntentId: paymentIntent.id }, { status: 200 })
   } catch (error) {
     return NextResponse.json({ error: 'An error occurred' }, { status: 500 })
   }
