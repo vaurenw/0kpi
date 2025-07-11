@@ -36,7 +36,9 @@ export const processExpiredGoalsAction = internalAction({
                 console.error('NEXT_PUBLIC_APP_URL not configured');
                 continue;
               }
-              
+              // Debug log for INTERNAL_API_KEY
+              const convexKey = process.env.INTERNAL_API_KEY;
+              console.log('[CONVEX DEBUG] INTERNAL_API_KEY:', convexKey ? convexKey.slice(0, 4) + '...' + convexKey.slice(-4) : '[undefined]');
               // Create a PaymentIntent using the saved payment method
               const response = await fetch(`${appUrl}/api/stripe/charge-payment-method`, {
                 method: 'POST',
