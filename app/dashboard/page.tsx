@@ -20,6 +20,7 @@ import { formatDistanceToNow, isToday, differenceInDays } from "date-fns"
 import { useDebounce } from "@/lib/hooks/use-debounce"
 import { CalendarGraph } from "@/components/calendar-graph"
 import { Footer } from "@/components/footer"
+import { DeleteAccountModal } from "@/components/delete-account-modal"
 
 export default function DashboardPage() {
   return (
@@ -51,6 +52,7 @@ function DashboardContent() {
   const [localUsername, setLocalUsername] = useState("")
   const [usernameError, setUsernameError] = useState("")
   const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   
   // Debounce username checking
   const debouncedUsername = useDebounce(localUsername, 500)
@@ -333,6 +335,41 @@ function DashboardContent() {
         </div>
         <GoalsContent goals={goals} isLoading={isLoading} />
       </div>
+
+      {/* Account Settings section */}
+      <div className="border-t pt-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">Account Settings</h2>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Danger Zone</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-destructive mb-2">Delete Account</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Permanently delete your account and all associated data. This action cannot be undone.
+                </p>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteModal(true)}
+                >
+                  Delete Account
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Delete Account Modal */}
+      <DeleteAccountModal 
+        open={showDeleteModal} 
+        onOpenChange={setShowDeleteModal} 
+      />
     </div>
   )
 }

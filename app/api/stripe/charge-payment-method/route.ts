@@ -5,6 +5,12 @@ import { ConvexHttpClient } from 'convex/browser'
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
+function mask(str?: string) {
+  if (!str) return '[undefined]'
+  if (str.length <= 8) return '[too short]'
+  return str.slice(0, 4) + '...' + str.slice(-4)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { paymentMethodId, amount, customerId, goalId } = await request.json()
@@ -40,7 +46,11 @@ export async function POST(request: NextRequest) {
 
     // Verify the request is authorized
     const authHeader = request.headers.get('authorization')
-    if (authHeader !== `Bearer ${process.env.INTERNAL_API_KEY}`) {
+    const envKey = process.env.INTERNAL_API_KEY
+    console.log('[DEBUG] Authorization header:', mask(authHeader ?? undefined))
+    console.log('[DEBUG] INTERNAL_API_KEY:', mask(envKey ?? undefined))
+    if (authHeader !== `Bearer ${envKey}`) {
+      console.error('[DEBUG] Authorization failed. Header:', mask(authHeader ?? undefined), 'Expected:', 'Bearer ' + mask(envKey ?? undefined))
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
