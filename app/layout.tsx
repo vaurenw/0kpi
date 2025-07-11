@@ -12,10 +12,9 @@ import "@/lib/env"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Pledge Goals - Commit to Your Goals",
-  description:
-    "A goal-oriented pledge system that helps you stay accountable to your commitments through financial incentives.",
-    generator: 'v0.dev'
+  title: "gambling on kpis",
+  description: "gambling on kpis",
+  generator: '0kpi.com'
 }
 
 export default function RootLayout({
@@ -25,6 +24,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/logo.png" type="image/png" />
+      </head>
       <body className={inter.className}>
         <ErrorBoundary>
         <ClerkProvider>

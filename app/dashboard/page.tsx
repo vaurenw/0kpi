@@ -336,33 +336,19 @@ function DashboardContent() {
         <GoalsContent goals={goals} isLoading={isLoading} />
       </div>
 
-      {/* Account Settings section */}
-      <div className="border-t pt-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-base sm:text-lg font-semibold text-foreground">Account Settings</h2>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Danger Zone</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-destructive mb-2">Delete Account</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Permanently delete your account and all associated data. This action cannot be undone.
-                </p>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setShowDeleteModal(true)}
-                >
-                  Delete Account
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Delete Account section (no border, no card, matches dashboard text) */}
+      <div className="pt-6">
+        <h2 className="text-base font-medium text-destructive mb-1">Delete Account</h2>
+        <p className="text-sm text-muted-foreground mb-3">
+          Permanently delete your account and all associated data. This action cannot be undone.
+        </p>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setShowDeleteModal(true)}
+        >
+          Delete Account
+        </Button>
       </div>
 
       {/* Delete Account Modal */}
