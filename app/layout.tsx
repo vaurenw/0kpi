@@ -26,6 +26,18 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/logo.png" type="image/png" />
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.0kpi.com/" />
+        <meta property="og:title" content="gambling on kpis" />
+        <meta property="og:description" content="gambling on kpis" />
+        <meta property="og:image" content="/social-preview.png" />
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content="https://www.0kpi.com/" />
+        <meta name="twitter:title" content="gambling on kpis" />
+        <meta name="twitter:description" content="gambling on kpis" />
+        <meta name="twitter:image" content="/social-preview.png" />
       </head>
       <body className={inter.className}>
         <ErrorBoundary>
