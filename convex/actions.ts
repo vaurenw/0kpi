@@ -44,7 +44,7 @@ export const processExpiredGoalsAction = internalAction({
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'X-Internal-Api-Key': process.env.INTERNAL_API_KEY,
+                  'X-Internal-Api-Key': process.env.INTERNAL_API_KEY || '',
                 },
                 body: JSON.stringify({
                   paymentMethodId: goal.paymentMethodId,
