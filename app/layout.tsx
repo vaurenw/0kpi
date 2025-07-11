@@ -31,13 +31,13 @@ export default function RootLayout({
         <meta property="og:url" content="https://www.0kpi.com/" />
         <meta property="og:title" content="gambling on kpis" />
         <meta property="og:description" content="gambling on kpis" />
-        <meta property="og:image" content="/social-preview.png" />
+        <meta property="og:image" content="https://i.postimg.cc/CdyTncWr/Group-23.png" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://www.0kpi.com/" />
         <meta name="twitter:title" content="gambling on kpis" />
         <meta name="twitter:description" content="gambling on kpis" />
-        <meta name="twitter:image" content="/social-preview.png" />
+        <meta name="twitter:image" content="https://i.postimg.cc/CdyTncWr/Group-23.png" />
       </head>
       <body className={inter.className}>
         <ErrorBoundary>
