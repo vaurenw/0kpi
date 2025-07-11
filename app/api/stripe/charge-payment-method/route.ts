@@ -45,12 +45,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the request is authorized
-    const authHeader = request.headers.get('authorization')
+    const apiKey = request.headers.get('x-internal-api-key')
     const envKey = process.env.INTERNAL_API_KEY
-    console.log('[DEBUG] Authorization header:', mask(authHeader ?? undefined))
+    console.log('[DEBUG] X-Internal-Api-Key header:', mask(apiKey ?? undefined))
     console.log('[DEBUG] INTERNAL_API_KEY:', mask(envKey ?? undefined))
-    if (authHeader !== `Bearer ${envKey}`) {
-      console.error('[DEBUG] Authorization failed. Header:', mask(authHeader ?? undefined), 'Expected:', 'Bearer ' + mask(envKey ?? undefined))
+    if (apiKey !== envKey) {
+      console.error('[DEBUG] Authorization failed. Header:', mask(apiKey ?? undefined), 'Expected:', mask(envKey ?? undefined))
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
