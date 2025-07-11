@@ -338,13 +338,14 @@ function DashboardContent() {
 
       {/* Delete Account section (no border, no card, matches dashboard text) */}
       <div className="pt-6">
-        <h2 className="text-base font-medium text-destructive mb-1">Delete Account</h2>
+        <h2 className="text-base sm:text-sm font-medium text-destructive mb-1">Delete Account</h2>
         <p className="text-sm text-muted-foreground mb-3">
           Permanently delete your account and all associated data. This action cannot be undone.
         </p>
         <Button
           variant="destructive"
           size="sm"
+          className="rounded px-3 py-1 font-normal focus:outline-none focus:ring-2 focus:ring-gray-200"
           onClick={() => setShowDeleteModal(true)}
         >
           Delete Account
