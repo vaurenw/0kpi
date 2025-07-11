@@ -209,7 +209,7 @@ export function CreateGoalForm() {
             id="title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Build Open Source LinkedIn Alternative"
+            placeholder="e.g., build open source linkedin alternative"
             className="mt-1 text-xs sm:text-sm px-2 py-1"
             required
             maxLength={88}
@@ -239,13 +239,10 @@ export function CreateGoalForm() {
               required
             />
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Choose the date and time when you want to complete this goal. You can set it for today!
-          </p>
         </div>
 
         <div>
-          <Label htmlFor="pledgeAmount" className="text-sm font-medium">
+          <Label htmlFor="pledgeAmount" className="text-xs sm:text-sm font-medium">
             Pledge Amount
           </Label>
           <div className="relative mt-1">
@@ -264,7 +261,7 @@ export function CreateGoalForm() {
             <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            This amount will be charged if you don't complete your goal by the deadline. You can set any amount from $0.50 to $10,000.
+            You can set any amount from $0.5 onwards.
           </p>
         </div>
       </div>
